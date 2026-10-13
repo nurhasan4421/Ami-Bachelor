@@ -1,0 +1,46 @@
+/* Apple San Francisco Typography & Custom Classes */
+.font-sf-regular {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 400;
+}
+
+.font-sf-medium {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+}
+
+.font-sf-semibold {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+}
+
+.font-sf-bold {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+}
+
+.card-rail {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.card-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.mini-card-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+.mini-card-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.mini-card-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mini-card-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+}
+.mini-card-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
