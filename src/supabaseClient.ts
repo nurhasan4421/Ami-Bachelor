@@ -1,6 +1,12 @@
-// Local Mock & Offline Supabase Store for development without active cloud Supabase
-export const BYPASS_AUTH = true;
+import { createClient } from '@supabase/supabase-js';
 
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+
+export const isLiveSupabase = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('mock'));
+export const BYPASS_AUTH = !isLiveSupabase;
+
+const liveClient = isLiveSupabase ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const MOCK_USER = {
   id: 'manager-user-001',
   email: 'nurhasan@gmail.com',
@@ -301,7 +307,7 @@ class MockQueryBuilder {
   }
 }
 
-export const supabase = {
+const mockSupabase = {
   from(tableName: string) {
     return new MockQueryBuilder(tableName);
   },
@@ -325,3 +331,5 @@ export const supabase = {
     }
   }
 };
+
+export const supabase = (liveClient || mockSupabase) as any;
