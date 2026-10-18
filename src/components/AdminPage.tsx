@@ -41,6 +41,7 @@ interface AdminPageProps {
   onAddDailyMeal?: (date: string, person: string, count: number) => void;
   onAddExpense?: (ed: any) => Promise<void>;
   onDeleteExpense?: (id: string) => Promise<void>;
+  onDeleteDeposit?: (id: string | number) => Promise<void>;
   onAddDeposit?: (person: string, amount: number, date: string) => Promise<void>;
   onUpdateMealMenu?: (type: 'breakfast' | 'lunch' | 'dinner', value: string) => void;
   currentUserId?: string;
@@ -67,6 +68,7 @@ export default function AdminPage({
   onAddDailyMeal,
   onAddExpense,
   onDeleteExpense,
+  onDeleteDeposit,
   onAddDeposit,
   onUpdateMealMenu,
   currentUserId,
@@ -104,6 +106,7 @@ export default function AdminPage({
 
   // Modals state
   const [selectedExpenseDetail, setSelectedExpenseDetail] = useState<any | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [editingMealType, setEditingMealType] = useState<'breakfast' | 'lunch' | 'dinner' | null>(null);
   const [mealMenuInput, setMealMenuInput] = useState('');
@@ -380,8 +383,8 @@ export default function AdminPage({
 
               <button
                 type="button"
-                onClick={() => onNavigate('expenses')}
-                title="Edit / View Expenses"
+                onClick={() => setIsDeleteModalOpen(true)}
+                title="Delete Logged Entries"
                 className="flex h-[26px] w-[26px] items-center justify-center rounded-[8px] bg-white text-[#333] shadow-xs hover:bg-slate-50 transition-colors"
               >
                 <Edit2 size={13} />
@@ -954,10 +957,14 @@ export default function AdminPage({
               </p>
             </div>
             <div className="flex gap-2 pt-2">
-              {!selectedExpenseDetail.isDeposit && onDeleteExpense && (
+              {((!selectedExpenseDetail.isDeposit && onDeleteExpense) || (selectedExpenseDetail.isDeposit && onDeleteDeposit)) && (
                 <button
                   onClick={async () => {
-                    await onDeleteExpense(selectedExpenseDetail.id);
+                    if (selectedExpenseDetail.isDeposit) {
+                      if (onDeleteDeposit) await onDeleteDeposit(selectedExpenseDetail.id);
+                    } else {
+                      if (onDeleteExpense) await onDeleteExpense(selectedExpenseDetail.id);
+                    }
                     setSelectedExpenseDetail(null);
                   }}
                   className="flex-1 py-2.5 rounded-[12px] bg-red-50 text-red-600 border border-red-200 font-sf-semibold text-xs hover:bg-red-100 flex items-center justify-center gap-1.5"
@@ -972,6 +979,66 @@ export default function AdminPage({
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Logged Entries (Opened by Pencil Icon) */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-5 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-[#d6d6d6]/60">
+              <div className="flex items-center gap-2">
+                <Trash2 size={16} className="text-red-600" />
+                <h3 className="font-sf-bold text-sm text-[#141414]">Delete Logged Entries</h3>
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="p-1 rounded-full text-[#8e8e8e] hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 divide-y divide-[#d6d6d6]/50">
+              {allTransactionItems.map((item) => (
+                <div
+                  key={item.id + item.title}
+                  className="flex items-center justify-between pt-2 pb-1 gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-sf-bold text-xs text-[#141414]">{item.title}</p>
+                    <p className="truncate text-[9px] text-[#626262]">
+                      <span className="font-sf-bold text-black">{item.person}</span> • {item.category} • ৳{item.amount.toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    title="Delete this entry"
+                    onClick={async () => {
+                      if (item.isDeposit) {
+                        if (onDeleteDeposit) await onDeleteDeposit(item.id);
+                      } else {
+                        if (onDeleteExpense) await onDeleteExpense(item.id);
+                      }
+                    }}
+                    className="p-2 text-[#8e8e8e] hover:text-red-600 hover:bg-red-50 rounded-[8px] transition-colors shrink-0"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              {allTransactionItems.length === 0 && (
+                <p className="py-8 text-center text-xs text-[#8e8e8e]">No logged entries found.</p>
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="w-full py-2.5 rounded-[12px] bg-slate-100 font-sf-semibold text-xs text-[#141414] hover:bg-slate-200 transition-colors"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

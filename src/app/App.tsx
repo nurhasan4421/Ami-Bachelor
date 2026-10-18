@@ -455,6 +455,27 @@ export default function App() {
       console.error("Error:", e);
     }
   };
+
+  const handleDeleteDeposit = async (id: string | number) => {
+    if (!activeMonthId) return;
+    try {
+      const { error } = await supabase
+        .from('food_deposits')
+        .delete()
+        .eq('id', id);
+
+      if (!error) {
+        setFoodDeposits((prev) => prev.filter((d) => d.id !== id));
+        fetchSheetData();
+        showToast("Deposit deleted successfully");
+      } else {
+        console.error("Error deleting deposit:", error.message);
+        showToast("Failed to delete deposit", "error");
+      }
+    } catch (e) {
+      console.error("Error:", e);
+    }
+  };
   const handleAddDailyMeal = async (date: string, person: string, meals: number) => {
     if (!activeMonthId) return;
     const { data: existing } = await supabase.from('daily_meals').select('*').eq('date', date).eq('month_id', activeMonthId);
@@ -808,7 +829,7 @@ export default function App() {
       )}
 
       {/* If still initially resolving active month, avoid flashing onboarding */}
-      {!activeMonthId && isInitialSyncing ? (
+      {isInitialSyncing ? (
         <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center font-sf-medium text-xs text-[#8e8e8e]">
           <div className="flex flex-col items-center gap-3">
             <img src="/logo.png" alt="Logo" className="h-9 w-auto object-contain animate-pulse" />
@@ -858,6 +879,7 @@ export default function App() {
             onAddDailyMeal={handleAddDailyMeal}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
+            onDeleteDeposit={handleDeleteDeposit}
             onAddDeposit={handleAddDeposit}
             onUpdateMealMenu={handleUpdateMealMenu}
             currentUserId={session?.user?.id}
