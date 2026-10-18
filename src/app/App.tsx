@@ -41,7 +41,11 @@ export default function App() {
   const [months, setMonths] = useState<MonthSheet[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(() => localStorage.getItem('activeMonthId') || 'month-current');
   
-  const [activeView, setActiveView] = useState<ViewState>('dashboard');
+  const [activeView, setActiveView] = useState<ViewState>(() => {
+    const saved = localStorage.getItem('ami_active_view') as ViewState;
+    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability'];
+    return (saved && validViews.includes(saved)) ? saved : 'dashboard';
+  });
 
   const [managedHostels, setManagedHostels] = useState<HostelData[]>([]);
   const [joinedHostels, setJoinedHostels] = useState<HostelData[]>([]);
@@ -50,7 +54,14 @@ export default function App() {
   const [dailyMeals, setDailyMeals] = useState<DailyMeal[]>([]);
   const [foodDeposits, setFoodDeposits] = useState<FoodDeposit[]>([]);
   const [manualAdjustments, setManualAdjustments] = useState<ManualAdjustments>({});
-  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
+  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>(() => {
+    const currentM = localStorage.getItem('activeMonthId') || 'month-current';
+    try {
+      const saved = localStorage.getItem(`ami_fixed_costs_${currentM}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [bazarItems, setBazarItems] = useState<BazarItem[]>([]);
   const [newBazarItem, setNewBazarItem] = useState('');
@@ -108,6 +119,10 @@ export default function App() {
     if (activeMonthId) localStorage.setItem('activeMonthId', activeMonthId);
     else localStorage.removeItem('activeMonthId');
   }, [activeMonthId]);
+
+  useEffect(() => {
+    if (activeView) localStorage.setItem('ami_active_view', activeView);
+  }, [activeView]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => { 
@@ -193,7 +208,18 @@ export default function App() {
 
     setRoommatesData(rooms.data || []); setExpenses(exps.data?.map(e => ({ ...e, amount: parseFloat(e.amount) })) || []);
     setDailyMeals(meals.data || []); setFoodDeposits(deposits.data?.map(d => ({ ...d, amount: parseFloat(d.amount) })) || []);
-    setFixedCosts(fixed.data || []); setAuditLogs(logs.data || []); setBazarItems(bazar.data || []); setAvailability(avail.data || []);
+
+    // Fixed Costs persistence: sync Supabase data with local fallback
+    let resolvedFixed = fixed.data || [];
+    if (resolvedFixed.length > 0) {
+      localStorage.setItem(`ami_fixed_costs_${activeMonthId}`, JSON.stringify(resolvedFixed));
+    } else {
+      try {
+        const cached = localStorage.getItem(`ami_fixed_costs_${activeMonthId}`);
+        if (cached) resolvedFixed = JSON.parse(cached);
+      } catch {}
+    }
+    setFixedCosts(resolvedFixed); setAuditLogs(logs.data || []); setBazarItems(bazar.data || []); setAvailability(avail.data || []);
     if (schedules.data) setMealSchedule(schedules.data); else setMealSchedule({ date: today, breakfast: '0', lunch: '0', dinner: '0' });
     const adjObject: Record<string, number> = {};
     adjustments.data?.forEach(item => { adjObject[item.person] = Number(item.amount) });
@@ -1003,8 +1029,10 @@ export default function App() {
                           }
                         }
 
-                        // 4. Update state and refresh
-                        setFixedCosts(costs.map((c) => ({ ...c, amount: Number(c.amount) || 0 })));
+                        // 4. Update state, local backup and refresh
+                        const normalizedCosts = costs.map((c) => ({ ...c, amount: Number(c.amount) || 0 }));
+                        localStorage.setItem(`ami_fixed_costs_${activeMonthId}`, JSON.stringify(normalizedCosts));
+                        setFixedCosts(normalizedCosts);
                         await fetchSheetData();
                         showToast('Fixed costs saved successfully');
                       } catch (err) {
