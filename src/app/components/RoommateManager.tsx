@@ -46,6 +46,7 @@ export function RoommateManager({
 
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  const [editPlan, setEditPlan] = useState<'both' | 'meal' | 'flat'>('both');
 
   useEffect(() => {
     if (isManager && hostelId) {
@@ -90,9 +91,23 @@ export function RoommateManager({
     }
   };
 
-  const handleSaveProfile = async (id: string) => {
-    await supabase.from('roommates').update({ phone: editPhone, address: editAddress }).eq('id', id);
-    alert('Profile Updated!');
+  const handleSaveProfile = async (r: Roommate) => {
+    // 1. Save plan to localStorage map
+    try {
+      const mapKey = `ami_member_plans_${r.month_id || 'default'}`;
+      const savedMap = JSON.parse(localStorage.getItem(mapKey) || '{}');
+      savedMap[r.name.toLowerCase()] = editPlan;
+      savedMap[r.id] = editPlan;
+      localStorage.setItem(mapKey, JSON.stringify(savedMap));
+    } catch (e) {
+      console.warn('Failed saving plan to localStorage:', e);
+    }
+
+    // 2. Also try saving to Supabase (using address or dedicated field if available)
+    try {
+      await supabase.from('roommates').update({ phone: editPhone, address: editAddress }).eq('id', r.id);
+    } catch {}
+
     window.location.reload();
   };
 
@@ -104,6 +119,16 @@ export function RoommateManager({
     setExpandedId(r.id);
     setEditPhone(r.phone || '');
     setEditAddress(r.address || '');
+
+    // Read plan from localStorage or roommate data
+    try {
+      const mapKey = `ami_member_plans_${r.month_id || 'default'}`;
+      const savedMap = JSON.parse(localStorage.getItem(mapKey) || '{}');
+      const savedPlan = savedMap[r.name.toLowerCase()] || savedMap[r.id] || (r as any).plan || 'both';
+      setEditPlan(savedPlan);
+    } catch {
+      setEditPlan((r as any).plan || 'both');
+    }
   };
 
   return (
@@ -198,6 +223,16 @@ export function RoommateManager({
                         {r.role}
                       </span>
                     )}
+                    {(() => {
+                      try {
+                        const mapKey = `ami_member_plans_${r.month_id || 'default'}`;
+                        const savedMap = JSON.parse(localStorage.getItem(mapKey) || '{}');
+                        const p = savedMap[r.name.toLowerCase()] || savedMap[r.id] || (r as any).plan;
+                        if (p === 'meal') return <span className="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider font-sf-bold">Meal Only</span>;
+                        if (p === 'flat') return <span className="text-[8px] bg-blue-50 text-blue-700 border border-blue-300 px-1.5 py-0.2 rounded-full uppercase tracking-wider font-sf-bold">Flat Only</span>;
+                      } catch {}
+                      return null;
+                    })()}
                   </p>
                   <p className="font-sf-regular text-[9px] text-[#626262] mt-0.5">
                     {r.phone || 'No phone number'}
@@ -311,9 +346,94 @@ export function RoommateManager({
                   </div>
                 </div>
 
+                {/* Membership Calculation Type (Meal / Flat / Both) */}
+                <div className="bg-white p-3.5 rounded-[12px] border border-[#d6d6d6] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="font-sf-bold text-[10px] text-[#141414] uppercase tracking-wider">
+                      Calculation Type
+                    </p>
+                    <span className="text-[9px] font-sf-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 uppercase">
+                      {editPlan === 'both' ? 'Both (Meal + Flat)' : editPlan === 'meal' ? 'Meal Only (+ Chef)' : 'Flat Only'}
+                    </span>
+                  </div>
+
+                  <p className="font-sf-regular text-[10px] text-[#626262] leading-relaxed">
+                    Choose how expenses apply to {r.name}:
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                    {/* Meal Option */}
+                    <label
+                      className={`flex items-center gap-2 p-2.5 rounded-[10px] border cursor-pointer transition-all ${
+                        editPlan === 'meal'
+                          ? 'border-red-600 bg-red-50/60 text-red-700 font-sf-bold shadow-xs'
+                          : 'border-[#d6d6d6] bg-white text-[#141414] font-sf-medium hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`plan-${r.id}`}
+                        value="meal"
+                        checked={editPlan === 'meal'}
+                        disabled={!isManager}
+                        onChange={() => setEditPlan('meal')}
+                        className="accent-red-600"
+                      />
+                      <span className="text-xs">Meal</span>
+                    </label>
+
+                    {/* Flat Option */}
+                    <label
+                      className={`flex items-center gap-2 p-2.5 rounded-[10px] border cursor-pointer transition-all ${
+                        editPlan === 'flat'
+                          ? 'border-red-600 bg-red-50/60 text-red-700 font-sf-bold shadow-xs'
+                          : 'border-[#d6d6d6] bg-white text-[#141414] font-sf-medium hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`plan-${r.id}`}
+                        value="flat"
+                        checked={editPlan === 'flat'}
+                        disabled={!isManager}
+                        onChange={() => setEditPlan('flat')}
+                        className="accent-red-600"
+                      />
+                      <span className="text-xs">Flat</span>
+                    </label>
+
+                    {/* Both Checkbox / Option */}
+                    <label
+                      className={`col-span-2 sm:col-span-1 flex items-center gap-2 p-2.5 rounded-[10px] border cursor-pointer transition-all ${
+                        editPlan === 'both'
+                          ? 'border-red-600 bg-red-50/60 text-red-700 font-sf-bold shadow-xs'
+                          : 'border-[#d6d6d6] bg-white text-[#141414] font-sf-medium hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={editPlan === 'both'}
+                        disabled={!isManager}
+                        onChange={(e) => {
+                          if (e.target.checked) setEditPlan('both');
+                          else setEditPlan('meal');
+                        }}
+                        className="accent-red-600 rounded"
+                      />
+                      <span className="text-xs">Both</span>
+                    </label>
+                  </div>
+
+                  <p className="text-[9px] text-[#8e8e8e] italic">
+                    {editPlan === 'meal' && "• 'Meal' member: will NOT pay fixed flat costs (Rent, WiFi, Gas, etc.), but WILL pay Chef cost & consumed meals / grocery."}
+                    {editPlan === 'flat' && "• 'Flat' member: will pay fixed flat costs, but excluded from Chef cost & meal calculations."}
+                    {editPlan === 'both' && "• 'Both' member: regular mess member with both fixed flat costs and meal calculations."}
+                  </p>
+                </div>
+
                 {isManager && (
                   <button
-                    onClick={() => handleSaveProfile(r.id)}
+                    onClick={() => handleSaveProfile(r)}
                     className="w-full bg-red-600 text-white p-2.5 rounded-[8px] font-sf-semibold text-xs hover:bg-red-700 transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Save size={14} /> Save Profile

@@ -27,9 +27,15 @@ export function FixedCostsManager({
   const [newCatName, setNewCatName] = useState('');
 
   useEffect(() => {
-    setCosts(
-      fixedCosts.length > 0 ? fixedCosts : [{ category: 'Rent', amount: 0, is_paid: false }]
-    );
+    let initial = fixedCosts.length > 0 ? [...fixedCosts] : [
+      { category: 'Rent', amount: 0, is_paid: false },
+      { category: 'Chef', amount: 0, is_paid: false }
+    ];
+    // Ensure Chef category is present if not already added
+    if (!initial.some(c => c.category.toLowerCase() === 'chef')) {
+      initial.push({ category: 'Chef', amount: 0, is_paid: false });
+    }
+    setCosts(initial);
   }, [fixedCosts]);
 
   const handleUpdate = (index: number, field: keyof FixedCost, value: any) => {

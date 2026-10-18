@@ -493,24 +493,53 @@ export default function App() {
     const costPerMeal = totalMeals > 0 ? totalMealCost / totalMeals : 0;
     const count = roommates.length || 1;
 
+    // Helper to get roommate plan ('both' | 'meal' | 'flat')
+    const getRoommatePlan = (personName: string): 'both' | 'meal' | 'flat' => {
+      try {
+        const mapKey = `ami_member_plans_${activeMonthId || 'default'}`;
+        const savedMap = JSON.parse(localStorage.getItem(mapKey) || '{}');
+        const rm = roommatesData.find(r => r.name.toLowerCase() === personName.toLowerCase());
+        const plan = savedMap[personName.toLowerCase()] || (rm ? savedMap[rm.id] : undefined) || 'both';
+        return plan;
+      } catch {
+        return 'both';
+      }
+    };
+
+    // Calculate members participating in Flat Fixed Costs vs Chef/Meal
+    // 'flat' and 'both' members participate in regular fixed flat costs (Rent, WiFi, Gas, etc.)
+    // 'meal' and 'both' members participate in Chef fixed cost and Meals/Grocery
+    const flatEligibleCount = Math.max(1, roommates.filter(p => {
+      const plan = getRoommatePlan(p);
+      return plan === 'flat' || plan === 'both';
+    }).length);
+
+    const mealEligibleCount = Math.max(1, roommates.filter(p => {
+      const plan = getRoommatePlan(p);
+      return plan === 'meal' || plan === 'both';
+    }).length);
+
     // Meal stats per roommate (grocery paid by individual roommate counts towards their meal fund contribution!)
     const mealStats = roommates.map(person => {
-      const meals = dailyMeals.reduce((sum, day) => sum + Number(day.meals[person] || 0), 0);
+      const plan = getRoommatePlan(person);
+      const isMealMember = plan === 'meal' || plan === 'both';
+      const meals = isMealMember ? dailyMeals.reduce((sum, day) => sum + Number(day.meals[person] || 0), 0) : 0;
       const mealCost = meals * costPerMeal;
       const groceryPaid = expenses.filter(e => e.paidBy === person && e.category === 'Grocery').reduce((s, e) => s + Number(e.amount), 0);
       const depositsMade = unifiedMealDeposits.filter(d => d.person === person).reduce((s, d) => s + Number(d.amount), 0);
       const totalCont = groceryPaid + depositsMade;
-      return { person, meals, mealCost, groceryPaid, depositsMade, totalContribution: totalCont, balance: totalCont - mealCost };
+      return { person, meals, mealCost, groceryPaid, depositsMade, totalContribution: totalCont, balance: totalCont - mealCost, plan };
     });
 
     // Individual Account ledger:
-    // Fixed costs split equally among members
-    // Total paid includes:
-    // - Meal deposits (Meal)
-    // - Individual Grocery spent (Grocery)
-    // - Fixed cost account deposits (Account)
-    // - Any other directly paid shared bill
+    // - If member is 'meal': ONLY calculated for Chef fixed cost and Meal/Grocery (no Rent, WiFi, Electricity, etc.)
+    // - If member is 'flat': ONLY calculated for fixed costs EXCEPT Chef, and 0 meal/grocery cost
+    // - If member is 'both': calculated for all fixed costs, chef, and meals/grocery
     const indAccounts = roommates.map(person => {
+      const plan = getRoommatePlan(person);
+      const isMealMember = plan === 'meal' || plan === 'both';
+      const isFlatMember = plan === 'flat' || plan === 'both';
+
       const mealDepositsMade = unifiedMealDeposits.filter(d => d.person === person).reduce((s, d) => s + safeNum(d.amount), 0);
       const accountDepositsMade = accountDeposits.filter(e => e.paidBy === person).reduce((s, e) => s + safeNum(e.amount), 0);
       const groceryPaid = expenses.filter(e => e.paidBy === person && e.category === 'Grocery').reduce((s, e) => s + safeNum(e.amount), 0);
@@ -518,11 +547,25 @@ export default function App() {
       
       const dynamicExpenses: Record<string, number> = {};
       fixedCosts.forEach(fc => {
-        dynamicExpenses[fc.category] = fc.amount / roommates.length;
+        const isChef = fc.category.trim().toLowerCase() === 'chef';
+        if (isChef) {
+          // Chef is charged only if member is in meal or both
+          if (isMealMember) {
+            dynamicExpenses[fc.category] = fc.amount / mealEligibleCount;
+          }
+        } else {
+          // General flat costs (Rent, WiFi, etc.) charged only if member is in flat or both
+          if (isFlatMember) {
+            dynamicExpenses[fc.category] = fc.amount / flatEligibleCount;
+          }
+        }
       });
       
-      const myMeals = dailyMeals.reduce((s, d) => s + Number(d.meals[person] || 0), 0);
-      dynamicExpenses['Meal'] = myMeals * costPerMeal;
+      // Meals cost charged only if member is in meal or both
+      if (isMealMember) {
+        const myMeals = dailyMeals.reduce((s, d) => s + Number(d.meals[person] || 0), 0);
+        dynamicExpenses['Meal'] = myMeals * costPerMeal;
+      }
 
       const pMealDeposits = unifiedMealDeposits.filter(d => d.person === person).map(d => ({ id: d.id, date: d.date, description: 'Meal Fund Deposit', amount: safeNum(d.amount), type: 'deposit' as const }));
       const pAccountDeposits = accountDeposits.filter(e => e.paidBy === person).map(e => ({ id: e.id, date: e.date, description: e.description || 'Account / Fixed Cost Deposit', amount: safeNum(e.amount), type: 'deposit' as const }));
@@ -535,6 +578,7 @@ export default function App() {
 
       return { 
         name: person, 
+        plan,
         expenses: dynamicExpenses,
         paid: totalPaid, 
         manualAdjustment: manualAdjustments[person] || 0,
@@ -543,7 +587,7 @@ export default function App() {
     });
 
     return { groupFundBalance, totalDeposits, totalMealCost, costPerMeal, totalMeals, mealStats, indAccounts };
-  }, [roommates, expenses, dailyMeals, fixedCosts, foodDeposits, manualAdjustments]);
+  }, [roommates, roommatesData, expenses, dailyMeals, fixedCosts, foodDeposits, manualAdjustments, activeMonthId]);
 
   const sortedMealStats = useMemo(() => {
     const stats = [...calculations.mealStats];
