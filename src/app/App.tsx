@@ -404,7 +404,7 @@ export default function App() {
   };
 
   const [broadcastNotice, setBroadcastNotice] = useState<string>(() => {
-    return localStorage.getItem('ami_hostel_notice') || 'Everyone Please send money before Sunday evening...';
+    return localStorage.getItem('ami_hostel_notice') || '';
   });
 
   const handleSendNotice = (text: string) => {
@@ -720,6 +720,7 @@ export default function App() {
             onToggleAvailability={handleToggleAvailability}
             expensesList={expenses}
             foodDeposits={foodDeposits}
+            dailyMeals={dailyMeals}
             fixedCosts={fixedCosts}
             broadcastNotice={broadcastNotice}
             onSendNotice={handleSendNotice}
@@ -744,6 +745,7 @@ export default function App() {
             availability={availability}
             onToggleAvailability={handleToggleAvailability}
             expensesList={expenses}
+            dailyMeals={dailyMeals}
             fixedCosts={fixedCosts}
             broadcastNotice={broadcastNotice}
             currentUserId={session?.user?.id}

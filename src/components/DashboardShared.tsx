@@ -143,15 +143,30 @@ export function InfoCard({
 
 export function SheetCard({
   showPeople = false,
-  peopleCount = 12,
-  total = '53',
-  onClick
+  peopleCount = 0,
+  total = '0',
+  onClick,
+  roommates = [],
+  dailyMeals = []
 }: {
   showPeople?: boolean;
   peopleCount?: number;
   total?: string;
   onClick?: () => void;
+  roommates?: string[];
+  dailyMeals?: Array<{ date: string; meals: Record<string, number> }>;
 }) {
+  const displayNames = roommates.slice(0, 5);
+  const getInitial = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const sortedDays = [...dailyMeals].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const row1 = sortedDays[0]?.meals || {};
+  const row2 = sortedDays[1]?.meals || {};
+
   return (
     <article
       onClick={onClick}
@@ -189,27 +204,48 @@ export function SheetCard({
           </p>
         </div>
         <div className="w-full text-[8.5px] font-sf-medium">
-          <div className="grid grid-cols-5 text-center text-[#8e8e8e] pb-0.5 border-b border-[#d4d5cf]">
-            <span>AJ</span>
-            <span>NR</span>
-            <span>MH</span>
-            <span>SH</span>
-            <span>MR</span>
-          </div>
-          <div className="grid grid-cols-5 text-center text-[#141414] py-0.5 border-b border-[#d4d5cf]/60 font-sf-medium">
-            <span>1</span>
-            <span>2</span>
-            <span>2</span>
-            <span className="text-[#8e8e8e]">-</span>
-            <span>3</span>
-          </div>
-          <div className="grid grid-cols-5 text-center text-[#141414] pt-0.5 font-sf-medium">
-            <span>3</span>
-            <span className="text-[#8e8e8e]">-</span>
-            <span>1</span>
-            <span>2</span>
-            <span>3</span>
-          </div>
+          {displayNames.length > 0 ? (
+            <>
+              <div
+                className="grid text-center text-[#8e8e8e] pb-0.5 border-b border-[#d4d5cf]"
+                style={{ gridTemplateColumns: `repeat(${Math.max(displayNames.length, 1)}, minmax(0, 1fr))` }}
+              >
+                {displayNames.map((name, i) => (
+                  <span key={i} className="truncate px-0.5 font-sf-bold">{getInitial(name)}</span>
+                ))}
+              </div>
+              <div
+                className="grid text-center text-[#141414] py-0.5 border-b border-[#d4d5cf]/60 font-sf-medium"
+                style={{ gridTemplateColumns: `repeat(${Math.max(displayNames.length, 1)}, minmax(0, 1fr))` }}
+              >
+                {displayNames.map((name, i) => {
+                  const val = row1[name];
+                  return (
+                    <span key={i} className={val !== undefined && val !== null ? '' : 'text-[#8e8e8e]'}>
+                      {val !== undefined && val !== null ? val : '-'}
+                    </span>
+                  );
+                })}
+              </div>
+              <div
+                className="grid text-center text-[#141414] pt-0.5 font-sf-medium"
+                style={{ gridTemplateColumns: `repeat(${Math.max(displayNames.length, 1)}, minmax(0, 1fr))` }}
+              >
+                {displayNames.map((name, i) => {
+                  const val = row2[name];
+                  return (
+                    <span key={i} className={val !== undefined && val !== null ? '' : 'text-[#8e8e8e]'}>
+                      {val !== undefined && val !== null ? val : '-'}
+                    </span>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="py-2 text-center text-[#8e8e8e] text-[9px]">
+              No members added
+            </div>
+          )}
         </div>
       </div>
     </article>
@@ -255,86 +291,33 @@ export function DashboardHeader({
     }
   }, [showAdminNoticeModal]);
 
-  // Month-long notifications for Manager
-  const [adminNotices, setAdminNotices] = useState([
-    {
-      id: 'admin-notif-1',
-      title: 'Current Live Announcement',
-      message: broadcastNotice,
-      dateStr: '11 Oct 26',
-      timeStr: '10:30 AM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Announcement',
-      unread: true,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-2',
-      title: 'Meal Schedule Updated',
-      message: 'Dinner menu has been updated to Rice + Chicken. Please turn off your meal before 4:00 PM if you won\'t be having dinner tonight.',
-      dateStr: '10 Oct 26',
-      timeStr: '03:45 PM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Meal',
-      unread: true,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-3',
-      title: 'WiFi & Electricity Bill Generated',
-      message: 'Monthly WiFi bill (৳480) and Electricity bill (৳1,200) have been generated. Kindly clear dues before the 15th of this month.',
-      dateStr: '09 Oct 26',
-      timeStr: '11:15 AM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Rent & Bills',
-      unread: false,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-4',
-      title: 'Weekly Grocery Deposit Confirmation',
-      message: 'Deposit received from all 4 roommates. Current grocery balance is ৳7,200. Fresh vegetables, cooking oil, and fish purchased today.',
-      dateStr: '7 Aug 26',
-      timeStr: '08:20 PM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Deposit',
-      unread: false,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-5',
-      title: 'Friday Mess Cleaning Duties',
-      message: 'Reminder for general mess cleaning this Friday: Kitchen and common dining area cleaning duties are assigned to Room 2.',
-      dateStr: '5 Aug 26',
-      timeStr: '09:00 AM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'General',
-      unread: false,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-6',
-      title: 'Gas Cylinder Refill Notice',
-      message: 'New LP gas cylinder (৳1,450) was delivered and installed this afternoon. The cost has been added to shared utilities.',
-      dateStr: '3 Aug 26',
-      timeStr: '04:10 PM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Rent & Bills',
-      unread: false,
-      sentToCount: 4,
-    },
-    {
-      id: 'admin-notif-7',
-      title: 'Monthly Flat Rent Payment Reminder',
-      message: 'Flat rent (৳23,880) must be handed over to the landlord by the 5th of this month. Please send your personal share to the mess fund.',
-      dateStr: '1 Aug 26',
-      timeStr: '01:30 PM',
-      sender: registeredName ? `Manager (${registeredName})` : 'Manager',
-      category: 'Rent & Bills',
-      unread: false,
-      sentToCount: 4,
-    },
-  ]);
+  // Notifications list (initialized with current broadcast notice if available)
+  const [adminNotices, setAdminNotices] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    dateStr: string;
+    timeStr: string;
+    sender: string;
+    category: string;
+    unread: boolean;
+    sentToCount?: number;
+  }>>(() => {
+    if (broadcastNotice && !broadcastNotice.toLowerCase().includes('sunday evening')) {
+      const now = new Date();
+      return [{
+        id: 'notice-current',
+        title: 'Active Announcement',
+        message: broadcastNotice,
+        dateStr: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        timeStr: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        sender: registeredName ? `Manager (${registeredName})` : 'Manager',
+        category: 'Announcement',
+        unread: true,
+      }];
+    }
+    return [];
+  });
 
   // Keep live notice updated if prop changes
   useEffect(() => {
@@ -548,6 +531,50 @@ export function DashboardHeader({
                       <X size={16} />
                     </button>
                   </div>
+
+                  {/* Manager Broadcast Notice Input Form */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const input = form.elements.namedItem('broadcastInput') as HTMLInputElement;
+                      const val = input?.value?.trim();
+                      if (val) {
+                        if (onSendNotice) {
+                          onSendNotice(val);
+                        }
+                        const now = new Date();
+                        const newNotice = {
+                          id: 'notice-' + Date.now(),
+                          title: 'Notice from Manager',
+                          message: val,
+                          dateStr: now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }),
+                          timeStr: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                          sender: registeredName ? `Manager (${registeredName})` : 'Manager',
+                          category: 'Announcement',
+                          unread: true,
+                          sentToCount: 0,
+                        };
+                        setAdminNotices((prev) => [newNotice, ...prev]);
+                        input.value = '';
+                      }
+                    }}
+                    className="mt-3 flex items-center gap-2 bg-white p-2 rounded-[14px] border border-[#d6d6d6] shadow-xs"
+                  >
+                    <input
+                      name="broadcastInput"
+                      type="text"
+                      placeholder="Send notice to all flatmates..."
+                      className="flex-1 bg-transparent px-2 text-xs font-sf-medium text-[#141414] outline-none placeholder-[#8e8e8e]"
+                    />
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-[10px] font-sf-bold text-[11px] transition-colors shadow-xs"
+                    >
+                      <Send size={12} />
+                      <span>Send</span>
+                    </button>
+                  </form>
 
                   {/* Notifications List */}
                   <div className="mt-2.5 flex-1 overflow-y-auto divide-y divide-[#e5e6e1] overscroll-contain pr-1 -mr-1">

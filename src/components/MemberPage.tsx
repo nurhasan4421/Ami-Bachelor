@@ -23,6 +23,7 @@ interface MemberPageProps {
   availability?: Array<{ id: number; name: string; status: 'in' | 'out'; user_id?: string }>;
   onToggleAvailability?: (status: 'in' | 'out') => void;
   expensesList?: any[];
+  dailyMeals?: any[];
   fixedCosts?: Array<{ id: number; category: string; amount: number }>;
   broadcastNotice?: string;
   currentUserId?: string;
@@ -32,16 +33,17 @@ export default function MemberPage({
   onNavigate,
   activeView = 'dashboard',
   onToggleRole,
-  registeredName = 'NUR H.',
-  hostelName = 'AREA 51',
-  roommates = ['Nur Hasan', 'Tanvir', 'Siam', 'Rakib'],
+  registeredName = '',
+  hostelName = 'Workspace',
+  roommates = [],
   calculations,
   mealSchedule = { breakfast: 'Roti + Dal', lunch: 'Rice + Fish', dinner: 'Rice + Chicken' },
   availability = [],
   onToggleAvailability,
   expensesList = [],
+  dailyMeals = [],
   fixedCosts = [],
-  broadcastNotice = 'Everyone Please send money before Sunday evening...',
+  broadcastNotice = '',
   currentUserId,
 }: MemberPageProps) {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
@@ -64,29 +66,29 @@ export default function MemberPage({
     (a: any) => a.name.toLowerCase() === registeredName.toLowerCase()
   ) || calculations?.indAccounts?.[0];
 
-  const totalPaid = myAccount ? Number(myAccount.paid || 0) : 3500;
+  const totalPaid = myAccount ? Number(myAccount.paid || 0) : 0;
   const totalBill = myAccount?.expenses
     ? Object.values(myAccount.expenses).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) + (Number(myAccount.manualAdjustment) || 0)
-    : (myAccount?.totalBill ?? 9215);
+    : (myAccount?.totalBill ?? 0);
   const rawBalance = totalPaid - totalBill;
-  const balance = isNaN(rawBalance) ? -5715 : rawBalance;
+  const balance = isNaN(rawBalance) ? 0 : rawBalance;
   const isDue = balance < 0;
 
   const costPerMeal = calculations?.costPerMeal && !isNaN(Number(calculations.costPerMeal))
     ? Number(calculations.costPerMeal).toFixed(2)
-    : '56.38';
+    : '0.00';
 
   const myMeals = calculations?.mealStats?.find(
     (s: any) => s.person?.toLowerCase() === registeredName.toLowerCase()
-  )?.meals || myAccount?.mealsCount || 19;
+  )?.meals || myAccount?.mealsCount || 0;
 
   const myMealCost = (myAccount?.expenses?.['Meal'] !== undefined && !isNaN(Number(myAccount.expenses['Meal'])))
     ? Math.round(Number(myAccount.expenses['Meal']))
-    : (myAccount?.mealCost || 1304);
+    : (myAccount?.mealCost || 0);
 
   // Availability
-  const totalIn = availability.filter((a) => a.status === 'in').length || 3;
-  const totalOut = availability.filter((a) => a.status === 'out').length || 1;
+  const totalIn = availability.filter((a) => a.status === 'in').length;
+  const totalOut = availability.filter((a) => a.status === 'out').length;
   const myAvailRecord = availability.find(
     (a) => a.user_id === currentUserId || a.name.toLowerCase() === registeredName.toLowerCase()
   );
@@ -97,127 +99,40 @@ export default function MemberPage({
     (e) => e.category === 'Grocery' || e.category === 'Meal'
   );
 
-  const recentExpenses =
-    groceryExpenses.length > 0
-      ? groceryExpenses.map((e) => [
-          e.description,
-          e.paidBy,
-          new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-          `৳ ${Number(e.amount).toLocaleString()}`,
-        ])
-      : [
-          ['Morning Groceries', 'Rakib', '08 Oct', '৳ 600'],
-          ['Vegetables & Oil', 'Tanvir', '06 Oct', '৳ 1,150'],
-          ['Fish & Meat', 'Nur Hasan', '04 Oct', '৳ 2,400'],
-          ['Monthly Rice & Spices', 'Meal', '02 Oct', '৳ 4,800'],
-          ['Eggs & Milk', 'Siam', '29 Sep', '৳ 420'],
-          ['Chicken & Masala', 'Nur Hasan', '27 Sep', '৳ 1,350'],
-        ];
+  const recentExpenses = groceryExpenses.map((e) => [
+    e.description,
+    e.paidBy,
+    new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+    `৳ ${Number(e.amount).toLocaleString()}`,
+  ]);
 
-  const monthGroceryTotal =
-    expensesList
-      .filter((e) => e.category === 'Grocery' || e.category === 'Meal')
-      .reduce((s, e) => s + Number(e.amount || 0), 0) || 10720;
+  const monthGroceryTotal = expensesList
+    .filter((e) => e.category === 'Grocery' || e.category === 'Meal')
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
 
   // Fixed Costs - personal share
   const roommateCount = roommates.length || 1;
-  const myShareRent = Math.round((fixedCosts.find((f) => f.category.toLowerCase().includes('rent'))?.amount || 9000) / roommateCount);
-  const myShareWater = Math.round((fixedCosts.find((f) => f.category.toLowerCase().includes('water'))?.amount || 480) / roommateCount);
-  const myShareWifi = Math.round((fixedCosts.find((f) => f.category.toLowerCase().includes('wifi'))?.amount || 480) / roommateCount);
+  const rentCost = fixedCosts.find((f) => f.category.toLowerCase().includes('rent'))?.amount || 0;
+  const waterCost = fixedCosts.find((f) => f.category.toLowerCase().includes('water'))?.amount || 0;
+  const wifiCost = fixedCosts.find((f) => f.category.toLowerCase().includes('wifi'))?.amount || 0;
 
-  // Month-long notification history list (latest 6+ messages with exact date & time)
-  const messNotifications = [
+  const myShareRent = Math.round(rentCost / roommateCount);
+  const myShareWater = Math.round(waterCost / roommateCount);
+  const myShareWifi = Math.round(wifiCost / roommateCount);
+
+  // Notifications list (real announcements)
+  const messNotifications = broadcastNotice && !broadcastNotice.toLowerCase().includes('sunday evening') ? [
     {
-      id: 'notif-1',
+      id: 'notif-current',
       title: 'Notice from Manager',
       message: broadcastNotice,
-      dateStr: '11 Oct 26',
-      timeStr: '10:30 AM',
-      sender: 'Manager (Nur Hasan)',
+      dateStr: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      timeStr: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      sender: 'Manager',
       category: 'Announcement',
       unread: true,
-    },
-    {
-      id: 'notif-2',
-      title: 'Meal Schedule Updated',
-      message: 'Dinner menu has been updated to Rice + Chicken. Please turn off your meal before 4:00 PM if you won\'t be having dinner tonight.',
-      dateStr: '10 Oct 26',
-      timeStr: '03:45 PM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'Meal',
-      unread: true,
-    },
-    {
-      id: 'notif-3',
-      title: 'WiFi & Electricity Bill Generated',
-      message: 'Monthly WiFi bill (৳480) and Electricity bill (৳1,200) have been generated. Kindly clear dues before the 15th of this month.',
-      dateStr: '09 Oct 26',
-      timeStr: '11:15 AM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'Rent & Bills',
-      unread: false,
-    },
-    {
-      id: 'notif-4',
-      title: 'Weekly Grocery Deposit Confirmation',
-      message: 'Deposit received from all 4 roommates. Current grocery balance is ৳7,200. Fresh vegetables, cooking oil, and fish purchased today.',
-      dateStr: '7 Aug 26',
-      timeStr: '08:20 PM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'Deposit',
-      unread: false,
-    },
-    {
-      id: 'notif-5',
-      title: 'Friday Mess Cleaning Duties',
-      message: 'Reminder for general mess cleaning this Friday: Kitchen and common dining area cleaning duties are assigned to Room 2.',
-      dateStr: '5 Aug 26',
-      timeStr: '09:00 AM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'General',
-      unread: false,
-    },
-    {
-      id: 'notif-6',
-      title: 'Gas Cylinder Refill Notice',
-      message: 'New LP gas cylinder (৳1,450) was delivered and installed this afternoon. The cost has been added to shared utilities.',
-      dateStr: '3 Aug 26',
-      timeStr: '04:10 PM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'Rent & Bills',
-      unread: false,
-    },
-    {
-      id: 'notif-7',
-      title: 'Monthly Flat Rent Payment Reminder',
-      message: 'Flat rent (৳23,880) must be handed over to the landlord by the 5th of this month. Please send your personal share to the mess fund.',
-      dateStr: '1 Aug 26',
-      timeStr: '01:30 PM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'Rent & Bills',
-      unread: false,
-    },
-    {
-      id: 'notif-8',
-      title: 'Water Motor Maintenance Complete',
-      message: 'The overhead water tank and pump motor have been serviced by the technician. Regular water supply is now fully restored.',
-      dateStr: '28 Jul 26',
-      timeStr: '11:00 AM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'General',
-      unread: false,
-    },
-    {
-      id: 'notif-9',
-      title: 'Welcome to New Mess Cycle',
-      message: 'Welcome to this month at Ami Bachelor Mess! All daily calculations, meal rates, and balances have been reset for the cycle.',
-      dateStr: '25 Jul 26',
-      timeStr: '12:00 PM',
-      sender: 'Manager (Nur Hasan)',
-      category: 'General',
-      unread: false,
-    },
-  ];
+    }
+  ] : [];
 
   return (
     <div className="min-h-dvh overflow-x-hidden bg-[#f3f3f1] text-[#141414]">
@@ -304,8 +219,12 @@ export default function MemberPage({
 
             {/* Card 2: Sheet */}
             <SheetCard
+              showPeople={true}
+              peopleCount={roommates?.length || 0}
+              roommates={roommates}
+              dailyMeals={dailyMeals}
               onClick={() => onNavigate('meals')}
-              total={String(calculations?.totalMeals || '53')}
+              total={String(calculations?.totalMeals || '0')}
             />
 
             {/* Card 3: Count & Cost */}
@@ -393,10 +312,12 @@ export default function MemberPage({
             </button>
           </div>
           <div className="card-rail flex gap-[8px] overflow-x-auto pb-1">
-            <InfoCard due title="Due" width="130px">
+            <InfoCard due={isDue} title={isDue ? "Due" : "Balance"} width="130px">
               <div className="ml-auto flex w-full flex-col items-end gap-[4px] font-sf-medium">
-                <p className="font-sf-regular text-[8px] text-[#626262]">PAID ৳ {totalPaid}</p>
-                <p className="text-[20px] text-red-600 font-sf-bold">৳ 700</p>
+                <p className="font-sf-regular text-[8px] text-[#626262]">PAID ৳ {totalPaid.toLocaleString()}</p>
+                <p className={`text-[20px] font-sf-bold ${isDue ? 'text-red-600' : 'text-emerald-600'}`}>
+                  ৳ {Math.abs(balance).toLocaleString()}
+                </p>
               </div>
             </InfoCard>
             <InfoCard title="Expenses" width="233px">
@@ -404,18 +325,18 @@ export default function MemberPage({
                 onClick={() => onNavigate('fixed-costs')}
                 className="ml-auto flex w-full flex-col gap-[5px] font-sf-medium text-[10px] text-[#626262] cursor-pointer"
               >
-                <p className="flex justify-between">
-                  <span>Flat Rent</span>
-                  <span className="font-sf-semibold text-black">৳ {myShareRent.toLocaleString()}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Water Bill</span>
-                  <span className="font-sf-semibold text-black">৳ {myShareWater.toLocaleString()}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Internet Wifi</span>
-                  <span className="font-sf-semibold text-black">৳ {myShareWifi.toLocaleString()}</span>
-                </p>
+                {fixedCosts.length > 0 ? (
+                  fixedCosts.slice(0, 3).map((fc) => (
+                    <p key={fc.id} className="flex justify-between">
+                      <span>{fc.category}</span>
+                      <span className="font-sf-semibold text-black">
+                        ৳ {Math.round(Number(fc.amount || 0) / roommateCount).toLocaleString()}
+                      </span>
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-center py-2 text-[#8e8e8e]">No fixed costs added</p>
+                )}
               </div>
             </InfoCard>
           </div>

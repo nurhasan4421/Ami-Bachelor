@@ -34,6 +34,7 @@ interface AdminPageProps {
   onToggleAvailability?: (status: 'in' | 'out') => void;
   expensesList?: any[];
   foodDeposits?: any[];
+  dailyMeals?: any[];
   fixedCosts?: Array<{ id: number; category: string; amount: number }>;
   broadcastNotice?: string;
   onSendNotice?: (text: string) => void;
@@ -52,15 +53,16 @@ export default function AdminPage({
   onToggleRole,
   registeredName = 'NUR H.',
   hostelName = 'AREA 51',
-  roommates = ['Nur Hasan', 'Tanvir', 'Siam', 'Rakib'],
+  roommates = [],
   calculations,
-  mealSchedule = { breakfast: '4', lunch: '6', dinner: '5' },
+  mealSchedule = { breakfast: '0', lunch: '0', dinner: '0' },
   availability = [],
   onToggleAvailability,
   expensesList = [],
   foodDeposits = [],
+  dailyMeals = [],
   fixedCosts = [],
-  broadcastNotice = 'Everyone Please send money before Sunday evening...',
+  broadcastNotice = '',
   onSendNotice,
   onAddDailyMeal,
   onAddExpense,
@@ -167,20 +169,20 @@ export default function AdminPage({
     }, 1500);
   };
 
-  // Dynamic calculations or fallbacks
-  const totalMealDeposited = calculations?.totalDeposits || 3500;
-  const groupFundBalance = calculations?.groupFundBalance !== undefined ? calculations.groupFundBalance : -5715;
+  // Dynamic calculations from real Supabase data
+  const totalMealDeposited = calculations?.totalDeposits || 0;
+  const groupFundBalance = calculations?.groupFundBalance !== undefined ? calculations.groupFundBalance : 0;
   const isDue = groupFundBalance < 0;
 
-  const costPerMeal = calculations?.costPerMeal ? Number(calculations.costPerMeal).toFixed(2) : '56.38';
-  const totalMeals = calculations?.totalMeals || 156;
+  const costPerMeal = calculations?.costPerMeal ? Number(calculations.costPerMeal).toFixed(2) : '0.00';
+  const totalMeals = calculations?.totalMeals || 0;
   const totalMealCost = (calculations?.costPerMeal && calculations?.totalMeals)
     ? Math.round(Number(calculations.costPerMeal) * Number(calculations.totalMeals))
-    : (calculations?.totalMealCost || 8795);
+    : (calculations?.totalMealCost || 0);
 
   // Availability calculations
-  const totalIn = availability.filter((a) => a.status === 'in').length || 4;
-  const totalOut = availability.filter((a) => a.status === 'out').length || 2;
+  const totalIn = availability.filter((a) => a.status === 'in').length;
+  const totalOut = availability.filter((a) => a.status === 'out').length;
   const myAvailRecord = availability.find((a) => a.user_id === currentUserId || a.name.toLowerCase() === registeredName.toLowerCase());
   const myCurrentStatus = myAvailRecord?.status || 'in';
 
@@ -217,27 +219,21 @@ export default function AdminPage({
   const displayedTotalSum = displayedExpenses.reduce((s, item) => s + item.amount, 0);
 
   // Dynamic Members Deposit Rail Data
-  const memberDepositList = (calculations?.indAccounts || []).length > 0
-    ? calculations.indAccounts.slice(0, 4).map((a: any) => ({
-        person: a.name,
-        amount: Number(a.paid || 0),
-      }))
-    : [
-        { person: 'AJMAIN', amount: 2250 },
-        { person: 'NUR H.', amount: 2500 },
-        { person: 'MAHADI HASAN', amount: 2300 },
-      ];
+  const memberDepositList = (calculations?.indAccounts || []).map((a: any) => ({
+    person: a.name,
+    amount: Number(a.paid || 0),
+  }));
 
   const totalDepositRailSum = memberDepositList.reduce((s: number, d: any) => s + Number(d.amount), 0);
 
   // Dynamic Rent & Utilities calculations
-  const totalFixedCosts = fixedCosts.reduce((s, fc) => s + Number(fc.amount || 0), 0) || 12000;
+  const totalFixedCosts = fixedCosts.reduce((s, fc) => s + Number(fc.amount || 0), 0);
   const fixedExpensesPaid = expensesList
     .filter((e) => fixedCosts.some((f) => f.category.toLowerCase() === e.category?.toLowerCase()))
     .reduce((s, e) => s + Number(e.amount || 0), 0);
-  const fixedDueToPay = Math.max(0, totalFixedCosts - fixedExpensesPaid) || 4000;
-  const fixedCollected = Math.min(totalFixedCosts, totalFixedCosts - fixedDueToPay + 1000) || 8500;
-  const fixedToBeCollected = Math.max(0, totalFixedCosts - fixedCollected) || 3500;
+  const fixedDueToPay = Math.max(0, totalFixedCosts - fixedExpensesPaid);
+  const fixedCollected = Math.min(totalFixedCosts, totalFixedCosts - fixedDueToPay);
+  const fixedToBeCollected = Math.max(0, totalFixedCosts - fixedCollected);
 
   return (
     <div className="min-h-dvh overflow-x-hidden bg-[#f3f3f1] text-[#141414]">
@@ -560,8 +556,10 @@ export default function AdminPage({
             {/* Card 2: Sheet */}
             <SheetCard
               showPeople={true}
-              peopleCount={roommates?.length || 12}
+              peopleCount={roommates?.length || 0}
               total={String(totalMeals)}
+              roommates={roommates}
+              dailyMeals={dailyMeals}
               onClick={() => onNavigate('meals')}
             />
 
@@ -596,16 +594,20 @@ export default function AdminPage({
                   <span>TOTAL&nbsp;&nbsp;{totalDepositRailSum.toLocaleString()}</span>
                 </div>
                 <div className="flex flex-col gap-[3px] text-[10px] font-sf-medium">
-                  {memberDepositList.slice(0, 3).map((d: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between text-[#141414]">
-                      <span className="text-[#626262] text-[9.5px] font-sf-medium tracking-wide uppercase truncate max-w-[105px]">
-                        {d.person}
-                      </span>
-                      <span className="font-sf-bold text-[10px] shrink-0">
-                        ৳ {Number(d.amount).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
+                  {memberDepositList.length > 0 ? (
+                    memberDepositList.slice(0, 3).map((d: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-[#141414]">
+                        <span className="text-[#626262] text-[9.5px] font-sf-medium tracking-wide uppercase truncate max-w-[105px]">
+                          {d.person}
+                        </span>
+                        <span className="font-sf-bold text-[10px] shrink-0">
+                          ৳ {Number(d.amount).toLocaleString()}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-[#8e8e8e] text-[9px] py-1 text-center">No deposits yet</span>
+                  )}
                 </div>
               </div>
             </article>
