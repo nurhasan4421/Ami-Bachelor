@@ -96,7 +96,7 @@ export default function MemberPage({
 
   // Recent Grocery
   const groceryExpenses = expensesList.filter(
-    (e) => e.category === 'Grocery' || e.category === 'Meal'
+    (e) => e.category === 'Grocery'
   );
 
   const recentExpenses = groceryExpenses.map((e) => [
@@ -107,7 +107,7 @@ export default function MemberPage({
   ]);
 
   const monthGroceryTotal = expensesList
-    .filter((e) => e.category === 'Grocery' || e.category === 'Meal')
+    .filter((e) => e.category === 'Grocery')
     .reduce((s, e) => s + Number(e.amount || 0), 0);
 
   // Fixed Costs - personal share

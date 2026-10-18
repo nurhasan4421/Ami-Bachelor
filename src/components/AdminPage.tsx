@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DashboardHeader,
   Icon,
@@ -86,14 +86,21 @@ export default function AdminPage({
   const [selectedMember, setSelectedMember] = useState(roommates[0] || 'Nur Hasan');
   const [mealCount, setMealCount] = useState(1);
 
-  // Deposit / Expense sub-state
+  // Deposit / Expense sub-state: 3 categories (Account, Meal, Grocery)
+  const [expenseCategory, setExpenseCategory] = useState<'Account' | 'Meal' | 'Grocery'>('Grocery');
   const [expensePayer, setExpensePayer] = useState(roommates[0] || 'Nur Hasan');
-  const [expenseCategory, setExpenseCategory] = useState('Grocery');
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseDesc, setExpenseDesc] = useState('');
 
-  // Expenses Filter State
-  const [expenseFilter, setExpenseFilter] = useState<'all' | 'grocery' | 'deposits'>('grocery');
+  // If category is not Grocery, 'Meal' is not allowed as paidBy
+  useEffect(() => {
+    if (expenseCategory !== 'Grocery' && expensePayer === 'Meal') {
+      setExpensePayer(roommates[0] || '');
+    }
+  }, [expenseCategory, expensePayer, roommates]);
+
+  // Expenses Filter State: all, grocery, deposits
+  const [expenseFilter, setExpenseFilter] = useState<'all' | 'grocery' | 'deposits'>('all');
 
   // Modals state
   const [selectedExpenseDetail, setSelectedExpenseDetail] = useState<any | null>(null);
@@ -115,40 +122,70 @@ export default function AdminPage({
     }
   };
 
-  // Handle Save Expense or Deposit
+  // Handle Save Expense or Deposit:
+  // - 'Meal': individual personal meal fund deposit
+  // - 'Account': fixed cost deposit by member
+  // - 'Grocery': individual random expense or meal group fund expense
   const handleSaveTransaction = async () => {
     if (!expenseAmount || Number(expenseAmount) <= 0) {
       showToast?.('Please enter a valid amount', 'error');
       return;
     }
 
-    if (expenseCategory === 'Deposit') {
+    if (!expensePayer) {
+      showToast?.('Please select who paid', 'error');
+      return;
+    }
+
+    if (expenseCategory === 'Meal' && expensePayer === 'Meal') {
+      showToast?.('Meal fund cannot deposit to Meal fund. Select a member.', 'error');
+      return;
+    }
+
+    if (expenseCategory === 'Account' && expensePayer === 'Meal') {
+      showToast?.('Select a member for Account deposit', 'error');
+      return;
+    }
+
+    if (expenseCategory === 'Meal') {
       if (onAddDeposit) {
         await onAddDeposit(expensePayer, parseFloat(expenseAmount), selectedDate);
-        showToast?.(`Deposit of ৳${expenseAmount} added for ${expensePayer}`, 'success');
+        showToast?.(`Meal deposit of ৳${expenseAmount} added for ${expensePayer}`, 'success');
         setExpenseAmount('');
         setExpenseDesc('');
       } else {
-        showToast?.(`Saved deposit for ${expensePayer}`);
+        showToast?.(`Saved meal deposit for ${expensePayer}`);
       }
-    } else {
-      if (!expenseDesc.trim()) {
-        showToast?.('Please enter a short description', 'error');
-        return;
-      }
+    } else if (expenseCategory === 'Account') {
       if (onAddExpense) {
         await onAddExpense({
-          description: expenseDesc.trim(),
+          description: expenseDesc.trim() || 'Account / Fixed Cost Deposit',
           amount: parseFloat(expenseAmount),
           paidBy: expensePayer,
-          category: expenseCategory,
+          category: 'Account',
           date: selectedDate,
         });
-        showToast?.(`Expense of ৳${expenseAmount} added`, 'success');
+        showToast?.(`Account deposit of ৳${expenseAmount} added for ${expensePayer}`, 'success');
         setExpenseAmount('');
         setExpenseDesc('');
       } else {
-        showToast?.(`Saved expense of ৳${expenseAmount}`);
+        showToast?.(`Saved account deposit for ${expensePayer}`);
+      }
+    } else {
+      // Grocery category
+      if (onAddExpense) {
+        await onAddExpense({
+          description: expenseDesc.trim() || 'Grocery',
+          amount: parseFloat(expenseAmount),
+          paidBy: expensePayer,
+          category: 'Grocery',
+          date: selectedDate,
+        });
+        showToast?.(`Grocery expense of ৳${expenseAmount} added`, 'success');
+        setExpenseAmount('');
+        setExpenseDesc('');
+      } else {
+        showToast?.(`Saved grocery expense of ৳${expenseAmount}`);
       }
     }
   };
@@ -211,8 +248,8 @@ export default function AdminPage({
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const displayedExpenses = allTransactionItems.filter((item) => {
-    if (expenseFilter === 'grocery') return item.category === 'Grocery' || item.category === 'Meal';
-    if (expenseFilter === 'deposits') return item.isDeposit;
+    if (expenseFilter === 'grocery') return item.category === 'Grocery';
+    if (expenseFilter === 'deposits') return item.isDeposit || item.category === 'Deposit' || item.category === 'Account' || item.category === 'Meal';
     return true;
   });
 
@@ -229,10 +266,10 @@ export default function AdminPage({
   // Dynamic Rent & Utilities calculations
   const totalFixedCosts = fixedCosts.reduce((s, fc) => s + Number(fc.amount || 0), 0);
   const fixedExpensesPaid = expensesList
-    .filter((e) => fixedCosts.some((f) => f.category.toLowerCase() === e.category?.toLowerCase()))
+    .filter((e) => e.category === 'Account' || fixedCosts.some((f) => f.category.toLowerCase() === e.category?.toLowerCase()))
     .reduce((s, e) => s + Number(e.amount || 0), 0);
   const fixedDueToPay = Math.max(0, totalFixedCosts - fixedExpensesPaid);
-  const fixedCollected = Math.min(totalFixedCosts, totalFixedCosts - fixedDueToPay);
+  const fixedCollected = Math.min(totalFixedCosts, fixedExpensesPaid);
   const fixedToBeCollected = Math.max(0, totalFixedCosts - fixedCollected);
 
   return (
@@ -385,7 +422,10 @@ export default function AdminPage({
                             {r}
                           </option>
                         ))}
-                        <option value="Meal">Meal</option>
+                        {/* Only category 'Grocery' allows 'Meal' (fund) as paid by */}
+                        {expenseCategory === 'Grocery' && (
+                          <option value="Meal">Meal (Group Fund)</option>
+                        )}
                       </select>
                       <ChevronDown
                         size={14}
@@ -406,23 +446,18 @@ export default function AdminPage({
                     />
                   </div>
 
-                  {/* Category */}
+                  {/* Category: exactly 3 items: Account, Meal, Grocery */}
                   <div className="flex flex-col gap-[6px]">
                     <label className="font-sf-medium text-[12px] text-[#141414]">Category</label>
                     <div className="relative">
                       <select
                         value={expenseCategory}
-                        onChange={(e) => setExpenseCategory(e.target.value)}
-                        className="h-[38px] w-full appearance-none rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] outline-none border border-transparent focus:border-red-500 cursor-pointer"
+                        onChange={(e) => setExpenseCategory(e.target.value as any)}
+                        className="h-[38px] w-full appearance-none rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] outline-none border border-transparent focus:border-red-500 cursor-pointer font-sf-bold text-red-600"
                       >
-                        <option value="Grocery">Grocery</option>
-                        <option value="Deposit">Deposit</option>
-                        <option value="Flat Rent">Flat Rent</option>
-                        <option value="Water Bill">Water Bill</option>
-                        <option value="WiFi">WiFi</option>
-                        <option value="Electricity">Electricity</option>
-                        <option value="Gas">Gas</option>
-                        <option value="Others">Others</option>
+                        <option value="Account" className="text-black font-sf-medium">Account (Fixed Cost)</option>
+                        <option value="Meal" className="text-black font-sf-medium">Meal (Personal Meal Fund)</option>
+                        <option value="Grocery" className="text-black font-sf-medium">Grocery</option>
                       </select>
                       <ChevronDown
                         size={14}
@@ -619,6 +654,17 @@ export default function AdminPage({
           <div className="flex items-center justify-between">
             <SectionTitle>Expense History</SectionTitle>
             <div className="flex items-center gap-[6px]">
+              <button
+                type="button"
+                onClick={() => setExpenseFilter('all')}
+                className={`flex h-[26px] items-center justify-center rounded-full px-[10px] font-sf-medium text-[11px] leading-none transition-all whitespace-nowrap shadow-xs ${
+                  expenseFilter === 'all'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-white text-[#626262] border border-[#d6d6d6] hover:bg-slate-50'
+                }`}
+              >
+                All
+              </button>
               <button
                 type="button"
                 onClick={() => setExpenseFilter('deposits')}

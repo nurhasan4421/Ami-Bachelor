@@ -32,8 +32,7 @@ export function ExpenseForm({
   currentExpenses = [],
   fixedCategories = [],
 }: Props) {
-  const baseCategories = ['Grocery', 'Meal', 'WiFi', 'Gas', 'Electricity', 'Rent', 'Others'];
-  const categories = Array.from(new Set([...baseCategories, ...fixedCategories]));
+  const categories = ['Account', 'Meal', 'Grocery'];
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');

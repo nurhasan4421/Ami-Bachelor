@@ -445,62 +445,76 @@ export default function App() {
   const calculations = useMemo(() => {
     const safeNum = (v: any) => parseFloat(v?.toString() || '0') || 0;
     
-    // Math Routing - Only Meal category expenses count as Meal deposits
-    const mealCategoryExpenses = expenses.filter(e => e.category === 'Meal');
-    const unifiedDeposits = [...foodDeposits, ...mealCategoryExpenses.map(e => ({ id: e.id, person: e.paidBy, amount: e.amount, date: e.date }))];
-    
-    const totalDeposits = unifiedDeposits.reduce((sum, d) => sum + safeNum(d.amount), 0);
+    // Categorize transactions:
+    // 1. Deposits to Meal fund: food_deposits, expenses with category 'Meal', or legacy 'Deposit'
+    const mealDepositsFromExpenses = expenses.filter(e => e.category === 'Meal' || e.category === 'Deposit');
+    const unifiedMealDeposits = [
+      ...foodDeposits,
+      ...mealDepositsFromExpenses.map(e => ({ id: e.id, person: e.paidBy, amount: e.amount, date: e.date, category: 'Meal' }))
+    ];
+
+    // 2. Deposits to Account (Fixed Costs):
+    const accountDeposits = expenses.filter(e => e.category === 'Account' || e.category === 'Fixed Cost');
+
+    // Total Meal Deposits & Group Fund Balance
+    const totalDeposits = unifiedMealDeposits.reduce((sum, d) => sum + safeNum(d.amount), 0);
     const groupFundSpent = expenses.filter(e => e.paidBy === 'Meal').reduce((sum, e) => sum + safeNum(e.amount), 0);
     const groupFundBalance = totalDeposits - groupFundSpent;
+
+    // Total Meal Cost: Any expense where paidBy is 'Meal' OR category is 'Grocery'
     const totalMealCost = expenses.filter(e => e.paidBy === 'Meal' || e.category === 'Grocery').reduce((sum, e) => sum + safeNum(e.amount), 0);
     const totalMeals = dailyMeals.reduce((sum, day) => sum + Object.values(day.meals || {}).reduce((s, c) => s + safeNum(c), 0), 0);
     const costPerMeal = totalMeals > 0 ? totalMealCost / totalMeals : 0;
     const count = roommates.length || 1;
-    const getFix = (cat: string) => safeNum(fixedCosts.find(c => c.category === cat)?.amount);
-    
-    const pWifi = getFix('WiFi') / count;
-    const pGas = getFix('Gas') / count;
-    const pElec = getFix('Electricity') / count;
-    const pRent = getFix('Rent') / count;
-    const pChef = getFix('Chef') / count;
-    const pOthers = getFix('Others') / count;
 
+    // Meal stats per roommate (grocery paid by individual roommate counts towards their meal fund contribution!)
     const mealStats = roommates.map(person => {
       const meals = dailyMeals.reduce((sum, day) => sum + Number(day.meals[person] || 0), 0);
       const mealCost = meals * costPerMeal;
       const groceryPaid = expenses.filter(e => e.paidBy === person && e.category === 'Grocery').reduce((s, e) => s + Number(e.amount), 0);
-      const depositsMade = unifiedDeposits.filter(d => d.person === person).reduce((s, d) => s + Number(d.amount), 0);
+      const depositsMade = unifiedMealDeposits.filter(d => d.person === person).reduce((s, d) => s + Number(d.amount), 0);
       const totalCont = groceryPaid + depositsMade;
       return { person, meals, mealCost, groceryPaid, depositsMade, totalContribution: totalCont, balance: totalCont - mealCost };
     });
 
+    // Individual Account ledger:
+    // Fixed costs split equally among members
+    // Total paid includes:
+    // - Meal deposits (Meal)
+    // - Individual Grocery spent (Grocery)
+    // - Fixed cost account deposits (Account)
+    // - Any other directly paid shared bill
     const indAccounts = roommates.map(person => {
-  const depositsMade = unifiedDeposits.filter(d => d.person === person).reduce((s, d) => s + safeNum(d.amount), 0);
-  const directlyPaid = expenses.filter(e => e.paidBy === person && e.category !== 'Meal').reduce((s, e) => s + safeNum(e.amount), 0);
-  
-  // DYNAMIC EXPENSES: Create an object based on your fixedCosts state
-  const dynamicExpenses: Record<string, number> = {};
-  fixedCosts.forEach(fc => {
-    // This assumes fixed costs are split equally among all roommates
-    dynamicExpenses[fc.category] = fc.amount / roommates.length;
-  });
-  
-  // Add meal cost
-  const myMeals = dailyMeals.reduce((s, d) => s + Number(d.meals[person] || 0), 0);
-  dynamicExpenses['Meal'] = myMeals * costPerMeal;
+      const mealDepositsMade = unifiedMealDeposits.filter(d => d.person === person).reduce((s, d) => s + safeNum(d.amount), 0);
+      const accountDepositsMade = accountDeposits.filter(e => e.paidBy === person).reduce((s, e) => s + safeNum(e.amount), 0);
+      const groceryPaid = expenses.filter(e => e.paidBy === person && e.category === 'Grocery').reduce((s, e) => s + safeNum(e.amount), 0);
+      const otherDirectPaid = expenses.filter(e => e.paidBy === person && !['Meal', 'Account', 'Grocery', 'Deposit'].includes(e.category)).reduce((s, e) => s + safeNum(e.amount), 0);
+      
+      const dynamicExpenses: Record<string, number> = {};
+      fixedCosts.forEach(fc => {
+        dynamicExpenses[fc.category] = fc.amount / roommates.length;
+      });
+      
+      const myMeals = dailyMeals.reduce((s, d) => s + Number(d.meals[person] || 0), 0);
+      dynamicExpenses['Meal'] = myMeals * costPerMeal;
 
-  const pDeposits = unifiedDeposits.filter(d => d.person === person).map(d => ({ id: d.id, date: d.date, description: 'Deposit / Meal Fund', amount: safeNum(d.amount), type: 'deposit' as const }));
-  const pExpenses = expenses.filter(e => e.paidBy === person && e.category !== 'Meal').map(e => ({ id: e.id, date: e.date, description: e.description, amount: safeNum(e.amount), type: 'expense' as const }));
-  const pTransactions = [...pDeposits, ...pExpenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const pMealDeposits = unifiedMealDeposits.filter(d => d.person === person).map(d => ({ id: d.id, date: d.date, description: 'Meal Fund Deposit', amount: safeNum(d.amount), type: 'deposit' as const }));
+      const pAccountDeposits = accountDeposits.filter(e => e.paidBy === person).map(e => ({ id: e.id, date: e.date, description: e.description || 'Account / Fixed Cost Deposit', amount: safeNum(e.amount), type: 'deposit' as const }));
+      const pGrocery = expenses.filter(e => e.paidBy === person && e.category === 'Grocery').map(e => ({ id: e.id, date: e.date, description: e.description, amount: safeNum(e.amount), type: 'expense' as const }));
+      const pOtherExps = expenses.filter(e => e.paidBy === person && !['Meal', 'Account', 'Grocery', 'Deposit'].includes(e.category)).map(e => ({ id: e.id, date: e.date, description: e.description, amount: safeNum(e.amount), type: 'expense' as const }));
 
-  return { 
-    name: person, 
-    expenses: dynamicExpenses, // Now dynamic!
-    paid: directlyPaid + depositsMade, 
-    manualAdjustment: manualAdjustments[person] || 0,
-    transactions: pTransactions
-  };
-});
+      const pTransactions = [...pMealDeposits, ...pAccountDeposits, ...pGrocery, ...pOtherExps].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      const totalPaid = mealDepositsMade + accountDepositsMade + groceryPaid + otherDirectPaid;
+
+      return { 
+        name: person, 
+        expenses: dynamicExpenses,
+        paid: totalPaid, 
+        manualAdjustment: manualAdjustments[person] || 0,
+        transactions: pTransactions
+      };
+    });
 
     return { groupFundBalance, totalDeposits, totalMealCost, costPerMeal, totalMeals, mealStats, indAccounts };
   }, [roommates, expenses, dailyMeals, fixedCosts, foodDeposits, manualAdjustments]);
