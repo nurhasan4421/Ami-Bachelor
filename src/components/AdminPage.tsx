@@ -418,7 +418,7 @@ export default function AdminPage({
                         className="h-[38px] w-full appearance-none rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] outline-none border border-transparent focus:border-red-500 cursor-pointer font-sf-bold text-red-600"
                       >
                         <option value="Account" className="text-black font-sf-medium">Account (Fixed Cost)</option>
-                        <option value="Meal" className="text-black font-sf-medium">Meal (Personal Meal Fund)</option>
+                        <option value="Meal" className="text-black font-sf-medium">Meal [ personal ]</option>
                         <option value="Grocery" className="text-black font-sf-medium">Grocery</option>
                       </select>
                       <ChevronDown

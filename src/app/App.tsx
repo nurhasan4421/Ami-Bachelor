@@ -960,26 +960,57 @@ export default function App() {
                     fixedCosts={fixedCosts}
                     activeMonthId={activeMonthId!}
                     onUpdateFixedCosts={async (costs) => {
-                      for (const c of costs) {
-                        const { data } = await supabase
+                      if (!activeMonthId) return;
+                      try {
+                        // 1. Fetch all existing fixed cost ids for this month
+                        const { data: existingRows } = await supabase
                           .from('fixed_costs')
-                          .select('id')
-                          .eq('category', c.category)
+                          .select('id, category')
                           .eq('month_id', activeMonthId);
 
-                        if (data && data.length > 0) {
-                          await supabase
-                            .from('fixed_costs')
-                            .update({ amount: c.amount, is_paid: c.is_paid, paid_date: c.paid_date })
-                            .eq('id', data[0].id);
-                        } else {
-                          await supabase
-                            .from('fixed_costs')
-                            .insert([{ ...c, month_id: activeMonthId }]);
+                        const currentCategories = costs.map((c) => c.category);
+
+                        // 2. Delete any removed categories from the database
+                        const toDelete = (existingRows || []).filter(
+                          (row) => !currentCategories.includes(row.category)
+                        );
+                        for (const row of toDelete) {
+                          await supabase.from('fixed_costs').delete().eq('id', row.id);
                         }
+
+                        // 3. Upsert or insert current categories
+                        for (const c of costs) {
+                          const existing = (existingRows || []).find((r) => r.category === c.category);
+                          if (existing) {
+                            await supabase
+                              .from('fixed_costs')
+                              .update({
+                                amount: Number(c.amount) || 0,
+                                is_paid: c.is_paid || false,
+                                paid_date: c.paid_date || null,
+                              })
+                              .eq('id', existing.id);
+                          } else {
+                            await supabase.from('fixed_costs').insert([
+                              {
+                                category: c.category,
+                                amount: Number(c.amount) || 0,
+                                is_paid: c.is_paid || false,
+                                paid_date: c.paid_date || null,
+                                month_id: activeMonthId,
+                              },
+                            ]);
+                          }
+                        }
+
+                        // 4. Update state and refresh
+                        setFixedCosts(costs.map((c) => ({ ...c, amount: Number(c.amount) || 0 })));
+                        await fetchSheetData();
+                        showToast('Fixed costs saved successfully');
+                      } catch (err) {
+                        console.error('Failed saving fixed costs:', err);
+                        showToast('Failed to save fixed costs', 'error');
                       }
-                      setFixedCosts(costs);
-                      showToast('Fixed costs updated');
                     }}
                   />
                 </div>

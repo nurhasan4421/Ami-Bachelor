@@ -8,6 +8,20 @@
 @layer base {
   html {
     font-size: 18px; /* Everything will scale up globally */
+    overflow-x: hidden;
+    width: 100%;
+  }
+  body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    touch-action: pan-y;
+  }
+  /* iOS auto-zooms whenever font-size on input/select is < 16px. Enforcing 16px minimum on touch prevents zoom while keeping layout intact */
+  @media (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 }
 @keyframes marquee {

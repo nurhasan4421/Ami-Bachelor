@@ -127,7 +127,7 @@ export function ExpenseForm({
               >
                 {categories.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {c === 'Meal' ? 'Meal [ personal ]' : c}
                   </option>
                 ))}
               </select>
