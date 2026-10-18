@@ -17,7 +17,7 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell } from 'lucide-react';
 
 interface HostelData { id: number; name: string; security_code: string; role: 'manager' | 'member'; latestMonthId: string; }
-interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; hostels?: { id: number; name: string; security_code: string; }; }
+interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; }; }
 interface Roommate { id: string; name: string; user_id: string | null; month_id: string; role?: string; email?: string; phone?: string; address?: string; joined_date?: string; }
 interface Expense { id: string; description: string; amount: number; category: string; paidBy: string; date: string; }
 interface DailyMeal { id?: string; date: string; meals: { [person: string]: number }; }
@@ -162,10 +162,14 @@ export default function App() {
     const joinedM = joinedRes;
     const allAccessibleMonths = [...managedM, ...joinedM].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
     setMonths(allAccessibleMonths);
+
+    // Find the month configured as active for the workspace
+    const hostelActiveMonth = allAccessibleMonths.find(m => m.show_actions_to_members === true);
+
     if (!activeMonthId && allAccessibleMonths.length > 0) {
-      setActiveMonthId(allAccessibleMonths[0].id);
+      setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0].id);
     } else if (activeMonthId && !allAccessibleMonths.some(m => m.id === activeMonthId)) {
-      setActiveMonthId(allAccessibleMonths[0]?.id || null);
+      setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0]?.id || null);
     }
     const mHostelsMap = new Map<number, HostelData>();
     managedM.forEach(m => { if (m.hostels && !mHostelsMap.has(m.hostels.id)) mHostelsMap.set(m.hostels.id, { ...m.hostels, role: 'manager', latestMonthId: m.id }); });
@@ -276,6 +280,39 @@ export default function App() {
   const handleNavClick = (view: ViewState) => { setActiveView(view); setIsMenuOpen(false); };
   
   const handlePrintMasterTransaction = () => { window.print(); };
+
+  // Set month as the workspace active month (visible to all members on home page)
+  const handleSetGlobalActiveMonth = async (targetMonth: MonthSheet) => {
+    try {
+      setActiveMonthId(targetMonth.id);
+      // Set show_actions_to_members = true on selected month, and false on other months in this hostel
+      await supabase
+        .from('months')
+        .update({ show_actions_to_members: false })
+        .eq('hostel_id', targetMonth.hostel_id);
+
+      await supabase
+        .from('months')
+        .update({ show_actions_to_members: true })
+        .eq('id', targetMonth.id);
+
+      // Update local months state
+      setMonths(prev =>
+        prev.map(m =>
+          m.hostel_id === targetMonth.hostel_id
+            ? { ...m, show_actions_to_members: m.id === targetMonth.id }
+            : m
+        )
+      );
+
+      logAction(`Set "${targetMonth.name}" as current active month for all members`);
+      showToast(`Set "${targetMonth.name}" as active month for all members!`);
+      await fetchMonthsAndHostels();
+    } catch (err) {
+      console.error('Failed setting active month:', err);
+      showToast('Failed to set active month', 'error');
+    }
+  };
 
   // 🌟 NEW: Custom Modal Handlers
   const handleRenameMonth = (m: MonthSheet) => {
@@ -911,8 +948,12 @@ export default function App() {
                                 }`}
                               >
                                 <div
-                                  onClick={() => setActiveMonthId(m.id)}
+                                  onClick={() => {
+                                    setActiveMonthId(m.id);
+                                    showToast(`Viewing data for ${m.name}`);
+                                  }}
                                   className="flex items-center gap-3 cursor-pointer flex-1"
+                                  title="Click to view this month's data"
                                 >
                                   <div
                                     className={`p-2 rounded-[10px] ${
@@ -922,77 +963,105 @@ export default function App() {
                                     <Calendar size={18} />
                                   </div>
                                   <div>
-                                    <p
-                                      className={`font-sf-bold text-sm ${
-                                        isSelected ? 'text-[#141414]' : 'text-[#626262]'
-                                      }`}
-                                    >
-                                      {m.name}
-                                    </p>
-                                    {isSelected && (
-                                      <span className="font-sf-bold text-[9px] uppercase tracking-wider text-red-600">
-                                        Current Active
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <p
+                                        className={`font-sf-bold text-sm ${
+                                          isSelected ? 'text-[#141414]' : 'text-[#626262]'
+                                        }`}
+                                      >
+                                        {m.name}
+                                      </p>
+                                      {m.show_actions_to_members && (
+                                        <span className="text-[8px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.2 rounded-full uppercase tracking-wider font-sf-bold">
+                                          Current Active
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      {isSelected && (
+                                        <span className="font-sf-bold text-[9px] uppercase tracking-wider text-emerald-600">
+                                          ● Viewing Data
+                                        </span>
+                                      )}
+                                      {!isSelected && (
+                                        <span className="text-[9px] text-[#8e8e8e]">
+                                          Click to preview
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
                                 {effectiveIsManager && (
-                                  <div className="relative timeline-menu-container">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpenTimelineMenuId(openTimelineMenuId === m.id ? null : m.id);
-                                      }}
-                                      className="p-1.5 text-[#626262] hover:bg-black/5 rounded-[8px]"
-                                    >
-                                      <MoreVertical size={16} />
-                                    </button>
-
-                                    {openTimelineMenuId === m.id && (
-                                      <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-[#d6d6d6] shadow-xl rounded-[12px] z-50 p-1 flex flex-col">
-                                        <button
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            setActiveMonthId(m.id);
-                                            setOpenTimelineMenuId(null);
-                                          }}
-                                          className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
-                                        >
-                                          Set Active
-                                        </button>
-                                        <button
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            handleRenameMonth(m);
-                                            setOpenTimelineMenuId(null);
-                                          }}
-                                          className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
-                                        >
-                                          Rename
-                                        </button>
-                                        <button
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            handleCloneMonth(m);
-                                            setOpenTimelineMenuId(null);
-                                          }}
-                                          className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
-                                        >
-                                          Clone Month
-                                        </button>
-                                        <button
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            handleDeleteTimelineMonth(m.id);
-                                            setOpenTimelineMenuId(null);
-                                          }}
-                                          className="text-left px-3 py-1.5 text-xs font-sf-medium text-red-600 hover:bg-red-50 rounded-[6px]"
-                                        >
-                                          Delete
-                                        </button>
-                                      </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {!m.show_actions_to_members && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSetGlobalActiveMonth(m);
+                                        }}
+                                        className="px-2.5 py-1 text-[10px] font-sf-bold bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-[8px] transition-colors shadow-xs cursor-pointer"
+                                        title="Set as current active month for all members"
+                                      >
+                                        Set Active
+                                      </button>
                                     )}
+                                    <div className="relative timeline-menu-container">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenTimelineMenuId(openTimelineMenuId === m.id ? null : m.id);
+                                        }}
+                                        className="p-1.5 text-[#626262] hover:bg-black/5 rounded-[8px]"
+                                      >
+                                        <MoreVertical size={16} />
+                                      </button>
+
+                                      {openTimelineMenuId === m.id && (
+                                        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#d6d6d6] shadow-xl rounded-[12px] z-50 p-1 flex flex-col">
+                                          <button
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleSetGlobalActiveMonth(m);
+                                              setOpenTimelineMenuId(null);
+                                            }}
+                                            className="text-left px-3 py-1.5 text-xs font-sf-bold text-red-600 hover:bg-red-50 rounded-[6px]"
+                                          >
+                                            Set as Active for Members
+                                          </button>
+                                          <button
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleRenameMonth(m);
+                                              setOpenTimelineMenuId(null);
+                                            }}
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
+                                          >
+                                            Rename
+                                          </button>
+                                          <button
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleCloneMonth(m);
+                                              setOpenTimelineMenuId(null);
+                                            }}
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
+                                          >
+                                            Clone Month
+                                          </button>
+                                          <button
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleDeleteTimelineMonth(m.id);
+                                              setOpenTimelineMenuId(null);
+                                            }}
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-red-600 hover:bg-red-50 rounded-[6px]"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
