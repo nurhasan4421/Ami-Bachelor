@@ -408,6 +408,26 @@ export default function AdminPage({
               /* Frame 621: DEPOSIT / EXPENSE FORM */
               <div className="flex flex-col gap-[14px]">
                 <div className="grid grid-cols-2 gap-x-[12px] gap-y-[12px]">
+                  {/* Category: exactly 3 items: Account, Meal, Grocery */}
+                  <div className="flex flex-col gap-[6px]">
+                    <label className="font-sf-medium text-[12px] text-[#141414]">Category</label>
+                    <div className="relative">
+                      <select
+                        value={expenseCategory}
+                        onChange={(e) => setExpenseCategory(e.target.value as any)}
+                        className="h-[38px] w-full appearance-none rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] outline-none border border-transparent focus:border-red-500 cursor-pointer font-sf-bold text-red-600"
+                      >
+                        <option value="Account" className="text-black font-sf-medium">Account (Fixed Cost)</option>
+                        <option value="Meal" className="text-black font-sf-medium">Meal (Personal Meal Fund)</option>
+                        <option value="Grocery" className="text-black font-sf-medium">Grocery</option>
+                      </select>
+                      <ChevronDown
+                        size={14}
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8e8e]"
+                      />
+                    </div>
+                  </div>
+
                   {/* Paid By */}
                   <div className="flex flex-col gap-[6px]">
                     <label className="font-sf-medium text-[12px] text-[#141414]">Paid By</label>
@@ -444,26 +464,6 @@ export default function AdminPage({
                       onChange={(e) => setExpenseAmount(e.target.value)}
                       className="h-[38px] w-full rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] placeholder:text-[#8e8e8e] outline-none border border-transparent focus:border-red-500"
                     />
-                  </div>
-
-                  {/* Category: exactly 3 items: Account, Meal, Grocery */}
-                  <div className="flex flex-col gap-[6px]">
-                    <label className="font-sf-medium text-[12px] text-[#141414]">Category</label>
-                    <div className="relative">
-                      <select
-                        value={expenseCategory}
-                        onChange={(e) => setExpenseCategory(e.target.value as any)}
-                        className="h-[38px] w-full appearance-none rounded-[10px] bg-[#f5f5f5] px-[12px] font-sf-medium text-[13px] text-[#141414] outline-none border border-transparent focus:border-red-500 cursor-pointer font-sf-bold text-red-600"
-                      >
-                        <option value="Account" className="text-black font-sf-medium">Account (Fixed Cost)</option>
-                        <option value="Meal" className="text-black font-sf-medium">Meal (Personal Meal Fund)</option>
-                        <option value="Grocery" className="text-black font-sf-medium">Grocery</option>
-                      </select>
-                      <ChevronDown
-                        size={14}
-                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8e8e8e]"
-                      />
-                    </div>
                   </div>
 
                   {/* Description */}

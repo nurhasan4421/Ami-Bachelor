@@ -115,20 +115,6 @@ export function ExpenseForm({
 
       <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between space-y-3">
         <div className="space-y-3">
-          <div>
-            <label className="block font-sf-medium text-[10px] text-[#626262] uppercase mb-1">
-              Description
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What was it for (e.g. Fish, WiFi bill)?"
-              className="w-full p-2.5 bg-white border border-[#d6d6d6] rounded-[12px] font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
-              required
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-sf-medium text-[10px] text-[#626262] uppercase mb-1">
@@ -168,21 +154,37 @@ export function ExpenseForm({
             </div>
           </div>
 
-          <div>
-            <label className="block font-sf-medium text-[10px] text-[#626262] uppercase mb-1">
-              Amount (BDT)
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center font-sf-bold text-xs text-[#626262] pointer-events-none">
-                ৳
-              </span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-sf-medium text-[10px] text-[#626262] uppercase mb-1">
+                Amount (BDT)
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center font-sf-bold text-xs text-[#626262] pointer-events-none">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  className="w-full pl-8 pr-3 py-2.5 bg-white border border-[#d6d6d6] rounded-[12px] font-sf-bold text-sm text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-sf-medium text-[10px] text-[#626262] uppercase mb-1">
+                Description
+              </label>
               <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                step="0.01"
-                className="w-full pl-8 pr-3 py-2.5 bg-white border border-[#d6d6d6] rounded-[12px] font-sf-bold text-sm text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Potato, rice"
+                className="w-full p-2.5 bg-white border border-[#d6d6d6] rounded-[12px] font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
                 required
               />
             </div>
