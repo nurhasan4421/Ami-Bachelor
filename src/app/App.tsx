@@ -40,6 +40,7 @@ export default function App() {
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [months, setMonths] = useState<MonthSheet[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(() => localStorage.getItem('activeMonthId') || 'month-current');
+  const [isInitialSyncing, setIsInitialSyncing] = useState(true);
   
   const [activeView, setActiveView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('ami_active_view') as ViewState;
@@ -172,6 +173,7 @@ export default function App() {
     joinedM.forEach(m => { if (m.hostels && !mHostelsMap.has(m.hostels.id) && !jHostelsMap.has(m.hostels.id)) jHostelsMap.set(m.hostels.id, { ...m.hostels, role: 'member', latestMonthId: m.id }); });
     setManagedHostels(Array.from(mHostelsMap.values()));
     setJoinedHostels(Array.from(jHostelsMap.values()));
+    setIsInitialSyncing(false);
   }, [session, activeMonthId]);
 
   useEffect(() => { fetchMonthsAndHostels(); }, [fetchMonthsAndHostels]);
@@ -768,7 +770,15 @@ export default function App() {
         </div>
       )}
 
-      {!activeMonthId ? (
+      {/* If still initially resolving active month, avoid flashing onboarding */}
+      {!activeMonthId && isInitialSyncing ? (
+        <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center font-sf-medium text-xs text-[#8e8e8e]">
+          <div className="flex flex-col items-center gap-3">
+            <img src="/logo.png" alt="Logo" className="h-9 w-auto object-contain animate-pulse" />
+            <span>Loading workspace...</span>
+          </div>
+        </div>
+      ) : !activeMonthId ? (
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
           <div className="p-6 flex justify-end">
             <button
