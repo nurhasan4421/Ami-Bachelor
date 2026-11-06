@@ -24,7 +24,7 @@ interface MemberPageProps {
   onToggleAvailability?: (status: 'in' | 'out') => void;
   expensesList?: any[];
   dailyMeals?: any[];
-  fixedCosts?: Array<{ id: number; category: string; amount: number }>;
+  fixedCosts?: Array<{ id?: string | number; category: string; amount: number }>;
   broadcastNotice?: string;
   currentUserId?: string;
   onOpenInstallPwa?: () => void;
@@ -70,7 +70,7 @@ export default function MemberPage({
 
   const totalPaid = myAccount ? Number(myAccount.paid || 0) : 0;
   const totalBill = myAccount?.expenses
-    ? Object.values(myAccount.expenses).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) + (Number(myAccount.manualAdjustment) || 0)
+    ? (Object.values(myAccount.expenses).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0) as number) + (Number(myAccount.manualAdjustment) || 0)
     : (myAccount?.totalBill ?? 0);
   const rawBalance = totalPaid - totalBill;
   const balance = isNaN(rawBalance) ? 0 : rawBalance;

@@ -35,7 +35,7 @@ interface AdminPageProps {
   expensesList?: any[];
   foodDeposits?: any[];
   dailyMeals?: any[];
-  fixedCosts?: Array<{ id: number; category: string; amount: number }>;
+  fixedCosts?: Array<{ id?: string | number; category: string; amount: number }>;
   broadcastNotice?: string;
   onSendNotice?: (text: string) => void;
   onAddDailyMeal?: (date: string, person: string, count: number) => void;
