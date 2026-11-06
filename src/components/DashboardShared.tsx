@@ -265,6 +265,7 @@ interface DashboardHeaderProps {
   onSendNotice?: (text: string) => void;
   onOpenNoticeModal?: () => void;
   onOpenInstallPwa?: () => void;
+  onLogout?: () => void;
 }
 
 export function DashboardHeader({
@@ -277,7 +278,8 @@ export function DashboardHeader({
   broadcastNotice = 'Everyone Please send money before Sunday evening...',
   onSendNotice,
   onOpenNoticeModal,
-  onOpenInstallPwa
+  onOpenInstallPwa,
+  onLogout
 }: DashboardHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdminNoticeModal, setShowAdminNoticeModal] = useState(false);
@@ -494,6 +496,23 @@ export function DashboardHeader({
                   </span>
                   <span>Install / Add to Home</span>
                 </button>
+
+                {/* Logout option */}
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-slate-600 hover:text-red-600 hover:bg-red-50/70 transition-all cursor-pointer"
+                  >
+                    <span className="text-current">
+                      <LogOut size={16} />
+                    </span>
+                    <span>Logout Account</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

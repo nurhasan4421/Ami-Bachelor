@@ -37,8 +37,8 @@ const StatusBadge = ({ balance }: { balance: number }) => {
   return <span className="bg-red-50 text-red-600 px-2 py-1 rounded-md text-[9px] font-black uppercase">Due ৳{Math.abs(balance).toFixed(0)}</span>;
 };
 export default function App() {
-  const [session, setSession] = useState<any>({ user: { id: 'manager-user-001', email: 'nurhasan@gmail.com' } });
-  const [loadingAuth, setLoadingAuth] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const [months, setMonths] = useState<MonthSheet[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(() => localStorage.getItem('activeMonthId') || 'month-current');
   const [isInitialSyncing, setIsInitialSyncing] = useState(true);
@@ -138,10 +138,54 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen, openTimelineMenuId]);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Error signing out:", e);
+    }
+    setSession(null);
+    localStorage.removeItem('activeMonthId');
+    localStorage.removeItem('ami_active_view');
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setLoadingAuth(false); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); setLoadingAuth(false); });
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data: { session }, error }: any) => {
+      if (error) {
+        handleLogout();
+      } else {
+        setSession(session);
+      }
+      setLoadingAuth(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        setSession(null);
+      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        setSession(session);
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // If password is being reset, log out current session for security
+        handleLogout();
+      } else {
+        setSession(session);
+      }
+      setLoadingAuth(false);
+    });
+
+    // In case user changed their password or revoked access on another device/tab
+    // listen for cross-tab storage changes to automatically log out
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.includes('auth-token') && !e.newValue) {
+        handleLogout();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const logAction = async (action: string) => {
@@ -715,13 +759,39 @@ export default function App() {
   if (loadingAuth) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-slate-400">LOADING...</div>;
 
   if (!session) {
+    const handleGoogleSignIn = async () => {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            prompt: 'select_account',
+            access_type: 'offline',
+          },
+        },
+      });
+    };
+
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] border border-slate-200 text-center relative overflow-hidden">
+        <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] border border-slate-200 text-center relative overflow-hidden shadow-xl">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
           <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-40 mx-auto object-contain hover:scale-105 transition-transform mb-6" />
           <p className="text-[8px] font-black text-slate-300 opacity-60 uppercase tracking-[0.3em] mt-2 mb-6">@NURHASAN4421</p>
-          <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} providers={['google']} onlyThirdPartyProviders={true} redirectTo={`${window.location.origin}/`} />
+          
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all shadow-xs active:scale-98 cursor-pointer"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
         </div>
       </div>
     );
@@ -848,8 +918,8 @@ export default function App() {
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
           <div className="p-6 flex justify-end">
             <button
-              onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-sf-bold rounded-[30px] border border-red-200 hover:bg-red-100 transition-all"
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-sf-bold rounded-[30px] border border-red-200 hover:bg-red-100 transition-all cursor-pointer"
             >
               <LogOut size={16} /> Logout
             </button>
@@ -893,6 +963,7 @@ export default function App() {
             currentUserId={session?.user?.id}
             showToast={showToast}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
+            onLogout={handleLogout}
           />
         ) : (
           <MemberPage
@@ -912,6 +983,7 @@ export default function App() {
             broadcastNotice={broadcastNotice}
             currentUserId={session?.user?.id}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
+            onLogout={handleLogout}
           />
         )
       ) : (
@@ -926,6 +998,7 @@ export default function App() {
             broadcastNotice={broadcastNotice}
             onSendNotice={handleSendNotice}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
+            onLogout={handleLogout}
           />
 
           <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

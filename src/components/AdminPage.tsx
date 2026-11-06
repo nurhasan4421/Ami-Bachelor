@@ -47,6 +47,7 @@ interface AdminPageProps {
   currentUserId?: string;
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onOpenInstallPwa?: () => void;
+  onLogout?: () => void;
 }
 
 export default function AdminPage({
@@ -75,6 +76,7 @@ export default function AdminPage({
   currentUserId,
   showToast,
   onOpenInstallPwa,
+  onLogout,
 }: AdminPageProps) {
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -289,6 +291,7 @@ export default function AdminPage({
         broadcastNotice={broadcastNotice}
         onSendNotice={onSendNotice}
         onOpenInstallPwa={onOpenInstallPwa}
+        onLogout={onLogout}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

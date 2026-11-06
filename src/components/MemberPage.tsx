@@ -28,6 +28,7 @@ interface MemberPageProps {
   broadcastNotice?: string;
   currentUserId?: string;
   onOpenInstallPwa?: () => void;
+  onLogout?: () => void;
 }
 
 export default function MemberPage({
@@ -47,6 +48,7 @@ export default function MemberPage({
   broadcastNotice = '',
   currentUserId,
   onOpenInstallPwa,
+  onLogout,
 }: MemberPageProps) {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -147,6 +149,7 @@ export default function MemberPage({
         hostelName={hostelName}
         onOpenNoticeModal={() => setShowNoticeModal(true)}
         onOpenInstallPwa={onOpenInstallPwa}
+        onLogout={onLogout}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">
