@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MemberPage from '@/components/MemberPage';
 import AdminPage from '@/components/AdminPage';
 import { DashboardHeader, type DashboardView } from '@/components/DashboardShared';
+import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 
 import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell } from 'lucide-react';
 
@@ -79,6 +80,7 @@ export default function App() {
   const [showAllAccounts, setShowAllAccounts] = useState(false); 
   const [showAllAvail, setShowAllAvail] = useState(false);
   const [openTimelineMenuId, setOpenTimelineMenuId] = useState<string | null>(null);
+  const [showInstallPwa, setShowInstallPwa] = useState(false);
 
   // 🌟 NEW: Apple-Style Notification Banner & Dialog States
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -798,6 +800,12 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* PWA Install / Add to Home Screen Prompt */}
+      <InstallPwaPrompt 
+        forceOpen={showInstallPwa} 
+        onDismiss={() => setShowInstallPwa(false)} 
+      />
+
       {showFlatmatesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
@@ -884,6 +892,7 @@ export default function App() {
             onUpdateMealMenu={handleUpdateMealMenu}
             currentUserId={session?.user?.id}
             showToast={showToast}
+            onOpenInstallPwa={() => setShowInstallPwa(true)}
           />
         ) : (
           <MemberPage
@@ -902,6 +911,7 @@ export default function App() {
             fixedCosts={fixedCosts}
             broadcastNotice={broadcastNotice}
             currentUserId={session?.user?.id}
+            onOpenInstallPwa={() => setShowInstallPwa(true)}
           />
         )
       ) : (
@@ -915,6 +925,7 @@ export default function App() {
             hostelName={currentMonthObj?.hostels?.name}
             broadcastNotice={broadcastNotice}
             onSendNotice={handleSendNotice}
+            onOpenInstallPwa={() => setShowInstallPwa(true)}
           />
 
           <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

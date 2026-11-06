@@ -25,14 +25,18 @@ export default defineConfig({
     // PWA Plugin Configuration
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
         name: 'Ami Bachelor',
-        short_name: 'AmiBachelor',
-        description: 'Shared Expenses Calculator for Bachelors',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        short_name: 'Ami Bachelor',
+        description: 'Shared Expenses & Meal Management for Bachelors',
+        start_url: '/',
+        scope: '/',
+        id: '/',
         display: 'standalone',
+        orientation: 'portrait',
+        theme_color: '#f3f3f1',
+        background_color: '#f3f3f1',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -49,6 +53,12 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
+          },
+          {
+            src: 'logo.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
           }
         ]
       }

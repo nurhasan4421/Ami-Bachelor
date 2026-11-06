@@ -10,12 +10,24 @@
     font-size: 18px; /* Everything will scale up globally */
     overflow-x: hidden;
     width: 100%;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     overflow-x: hidden;
     width: 100%;
     position: relative;
-    touch-action: pan-y;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  /* Allow selection on form inputs and tables */
+  input, textarea, select, [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
   }
   /* iOS auto-zooms whenever font-size on input/select is < 16px. Enforcing 16px minimum on touch prevents zoom while keeping layout intact */
   @media (max-width: 768px) {

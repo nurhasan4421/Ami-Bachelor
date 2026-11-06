@@ -27,6 +27,7 @@ interface MemberPageProps {
   fixedCosts?: Array<{ id: number; category: string; amount: number }>;
   broadcastNotice?: string;
   currentUserId?: string;
+  onOpenInstallPwa?: () => void;
 }
 
 export default function MemberPage({
@@ -45,6 +46,7 @@ export default function MemberPage({
   fixedCosts = [],
   broadcastNotice = '',
   currentUserId,
+  onOpenInstallPwa,
 }: MemberPageProps) {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -144,6 +146,7 @@ export default function MemberPage({
         registeredName={registeredName}
         hostelName={hostelName}
         onOpenNoticeModal={() => setShowNoticeModal(true)}
+        onOpenInstallPwa={onOpenInstallPwa}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

@@ -46,6 +46,7 @@ interface AdminPageProps {
   onUpdateMealMenu?: (type: 'breakfast' | 'lunch' | 'dinner', value: string) => void;
   currentUserId?: string;
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  onOpenInstallPwa?: () => void;
 }
 
 export default function AdminPage({
@@ -73,6 +74,7 @@ export default function AdminPage({
   onUpdateMealMenu,
   currentUserId,
   showToast,
+  onOpenInstallPwa,
 }: AdminPageProps) {
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -286,6 +288,7 @@ export default function AdminPage({
         hostelName={hostelName}
         broadcastNotice={broadcastNotice}
         onSendNotice={onSendNotice}
+        onOpenInstallPwa={onOpenInstallPwa}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

@@ -25,7 +25,8 @@ import {
   X,
   Clock,
   Trash2,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -263,6 +264,7 @@ interface DashboardHeaderProps {
   broadcastNotice?: string;
   onSendNotice?: (text: string) => void;
   onOpenNoticeModal?: () => void;
+  onOpenInstallPwa?: () => void;
 }
 
 export function DashboardHeader({
@@ -274,7 +276,8 @@ export function DashboardHeader({
   hostelName = 'AREA 51',
   broadcastNotice = 'Everyone Please send money before Sunday evening...',
   onSendNotice,
-  onOpenNoticeModal
+  onOpenNoticeModal,
+  onOpenInstallPwa
 }: DashboardHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdminNoticeModal, setShowAdminNoticeModal] = useState(false);
@@ -475,6 +478,22 @@ export function DashboardHeader({
                     </React.Fragment>
                   );
                 })}
+
+                {/* Add to Home App option */}
+                <div className="my-1 border-t border-[#d6d6d6]/60" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    if (onOpenInstallPwa) onOpenInstallPwa();
+                  }}
+                  className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-red-600 hover:bg-red-50/70 transition-all cursor-pointer"
+                >
+                  <span className="text-red-600">
+                    <Smartphone size={16} />
+                  </span>
+                  <span>Install / Add to Home</span>
+                </button>
               </div>
             </div>
           )}
