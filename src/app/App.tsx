@@ -126,9 +126,11 @@ export default function App() {
     return myRecord ? myRecord.name : (isManager ? 'Manager' : '');
   }, [roommatesData, session, isManager]);
 
+  const SUPER_ADMIN_EMAIL = 'nurhasan4421@gmail.com';
+
   const isSuperAdmin = useMemo(() => {
-    const email = session?.user?.email?.toLowerCase();
-    return email === 'nurhasan@gmail.com' || email === 'nurhasan4421@gmail.com' || email?.includes('superadmin');
+    const email = session?.user?.email?.trim().toLowerCase();
+    return email === SUPER_ADMIN_EMAIL || email === 'nurhasan@gmail.com';
   }, [session]);
 
   const effectiveIsManager = isManager && viewMode === 'manager';
@@ -959,7 +961,15 @@ export default function App() {
         </div>
       ) : !activeMonthId ? (
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
-          <div className="p-6 flex justify-end">
+          <div className="p-6 flex justify-between items-center">
+            {isSuperAdmin ? (
+              <button
+                onClick={() => setActiveView('super-admin')}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 text-xs font-sf-bold rounded-[30px] border border-amber-300 hover:bg-amber-100 transition-all cursor-pointer shadow-xs"
+              >
+                <ShieldCheck size={16} className="text-amber-600" /> Super Admin Panel
+              </button>
+            ) : <div />}
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-sf-bold rounded-[30px] border border-red-200 hover:bg-red-100 transition-all cursor-pointer"
