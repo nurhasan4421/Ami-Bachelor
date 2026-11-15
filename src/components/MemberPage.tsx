@@ -29,6 +29,8 @@ interface MemberPageProps {
   currentUserId?: string;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
+  isSuperAdmin?: boolean;
+  onOpenSuperAdmin?: () => void;
 }
 
 export default function MemberPage({
@@ -49,6 +51,8 @@ export default function MemberPage({
   currentUserId,
   onOpenInstallPwa,
   onLogout,
+  isSuperAdmin = false,
+  onOpenSuperAdmin,
 }: MemberPageProps) {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -150,6 +154,8 @@ export default function MemberPage({
         onOpenNoticeModal={() => setShowNoticeModal(true)}
         onOpenInstallPwa={onOpenInstallPwa}
         onLogout={onLogout}
+        isSuperAdmin={isSuperAdmin}
+        onOpenSuperAdmin={onOpenSuperAdmin}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

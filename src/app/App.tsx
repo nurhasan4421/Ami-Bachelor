@@ -14,11 +14,21 @@ import MemberPage from '@/components/MemberPage';
 import AdminPage from '@/components/AdminPage';
 import { DashboardHeader, type DashboardView } from '@/components/DashboardShared';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
+import SuperAdminPage from '@/components/SuperAdminPage';
 
 import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell } from 'lucide-react';
 
-interface HostelData { id: number; name: string; security_code: string; role: 'manager' | 'member'; latestMonthId: string; }
-interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; }; }
+interface HostelData { 
+  id: number; 
+  name: string; 
+  security_code: string; 
+  role: 'manager' | 'member'; 
+  latestMonthId: string;
+  status?: 'active' | 'pending' | 'deactivated' | 'rejected';
+  rejection_reason?: string;
+  transaction_id?: string;
+}
+interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; status?: string; }; }
 interface Roommate { id: string; name: string; user_id: string | null; month_id: string; role?: string; email?: string; phone?: string; address?: string; joined_date?: string; }
 interface Expense { id: string; description: string; amount: number; category: string; paidBy: string; date: string; }
 interface DailyMeal { id?: string; date: string; meals: { [person: string]: number }; }
@@ -30,7 +40,7 @@ interface BazarItem { id: number; date: string; item_name: string; is_completed:
 interface MealSchedule { id?: number; date: string; breakfast: string; lunch: string; dinner: string; }
 interface MemberAvail { id: number; user_id: string; name: string; status: 'in'|'out'; }
 
-type ViewState = 'dashboard' | 'timeline' | 'fixed-costs' | 'meals' | 'expenses' | 'accounts' | 'manage-hostel' | 'settings' | 'availability';
+type ViewState = 'dashboard' | 'timeline' | 'fixed-costs' | 'meals' | 'expenses' | 'accounts' | 'manage-hostel' | 'settings' | 'availability' | 'super-admin';
 const StatusBadge = ({ balance }: { balance: number }) => {
   if (Math.abs(balance) < 1) return <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-[9px] font-black uppercase">Paid</span>;
   if (balance > 0) return <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-md text-[9px] font-black uppercase">CR ৳{balance.toFixed(0)}</span>;
@@ -45,7 +55,7 @@ export default function App() {
   
   const [activeView, setActiveView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('ami_active_view') as ViewState;
-    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability'];
+    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability', 'super-admin'];
     return (saved && validViews.includes(saved)) ? saved : 'dashboard';
   });
 
@@ -115,6 +125,11 @@ export default function App() {
     const myRecord = roommatesData.find(r => r.user_id === session?.user?.id);
     return myRecord ? myRecord.name : (isManager ? 'Manager' : '');
   }, [roommatesData, session, isManager]);
+
+  const isSuperAdmin = useMemo(() => {
+    const email = session?.user?.email?.toLowerCase();
+    return email === 'nurhasan@gmail.com' || email === 'nurhasan4421@gmail.com' || email?.includes('superadmin');
+  }, [session]);
 
   const effectiveIsManager = isManager && viewMode === 'manager';
 
@@ -196,12 +211,21 @@ export default function App() {
 
   const fetchMonthsAndHostels = useCallback(async () => {
     if (!session) return;
-    const { data: managedRes } = await supabase.from('months').select('*, hostels(id, name, security_code)').eq('owner_id', session.user.id).order('created_at', { ascending: false });
+    const { data: managedRes } = await supabase
+      .from('months')
+      .select('*, hostels(id, name, security_code, status, transaction_id, rejection_reason)')
+      .eq('owner_id', session.user.id)
+      .order('created_at', { ascending: false });
+      
     const { data: myRooms } = await supabase.from('roommates').select('month_id').eq('user_id', session.user.id);
     let joinedRes: MonthSheet[] = [];
     if (myRooms && myRooms.length > 0) {
       const monthIds = [...new Set(myRooms.map(r => r.month_id))];
-      const { data } = await supabase.from('months').select('*, hostels(id, name, security_code)').in('id', monthIds).order('created_at', { ascending: false });
+      const { data } = await supabase
+        .from('months')
+        .select('*, hostels(id, name, security_code, status, transaction_id, rejection_reason)')
+        .in('id', monthIds)
+        .order('created_at', { ascending: false });
       if (data) joinedRes = data;
     }
     const managedM = managedRes || [];
@@ -218,9 +242,28 @@ export default function App() {
       setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0]?.id || null);
     }
     const mHostelsMap = new Map<number, HostelData>();
-    managedM.forEach(m => { if (m.hostels && !mHostelsMap.has(m.hostels.id)) mHostelsMap.set(m.hostels.id, { ...m.hostels, role: 'manager', latestMonthId: m.id }); });
+    managedM.forEach(m => { 
+      if (m.hostels && !mHostelsMap.has(m.hostels.id)) {
+        mHostelsMap.set(m.hostels.id, { 
+          ...m.hostels, 
+          status: (m.hostels.status as any) || 'active',
+          role: 'manager', 
+          latestMonthId: m.id 
+        }); 
+      }
+    });
+
     const jHostelsMap = new Map<number, HostelData>();
-    joinedM.forEach(m => { if (m.hostels && !mHostelsMap.has(m.hostels.id) && !jHostelsMap.has(m.hostels.id)) jHostelsMap.set(m.hostels.id, { ...m.hostels, role: 'member', latestMonthId: m.id }); });
+    joinedM.forEach(m => { 
+      if (m.hostels && !mHostelsMap.has(m.hostels.id) && !jHostelsMap.has(m.hostels.id)) {
+        jHostelsMap.set(m.hostels.id, { 
+          ...m.hostels, 
+          status: (m.hostels.status as any) || 'active',
+          role: 'member', 
+          latestMonthId: m.id 
+        }); 
+      }
+    });
     setManagedHostels(Array.from(mHostelsMap.values()));
     setJoinedHostels(Array.from(jHostelsMap.values()));
     setIsInitialSyncing(false);
@@ -935,6 +978,18 @@ export default function App() {
             }}
           />
         </div>
+      ) : activeView === 'super-admin' ? (
+        <SuperAdminPage
+          currentUserId={session?.user?.id}
+          currentUserEmail={session?.user?.email}
+          onExitSuperAdmin={() => setActiveView('dashboard')}
+          onSelectHostelMonth={(monthId: string) => {
+            setActiveMonthId(monthId);
+            setActiveView('dashboard');
+            fetchSheetData();
+          }}
+          showToast={showToast}
+        />
       ) : activeView === 'dashboard' ? (
         viewMode === 'manager' ? (
           <AdminPage
@@ -964,6 +1019,8 @@ export default function App() {
             showToast={showToast}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            isSuperAdmin={isSuperAdmin}
+            onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
         ) : (
           <MemberPage
@@ -984,6 +1041,8 @@ export default function App() {
             currentUserId={session?.user?.id}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            isSuperAdmin={isSuperAdmin}
+            onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
         )
       ) : (
@@ -999,6 +1058,8 @@ export default function App() {
             onSendNotice={handleSendNotice}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            isSuperAdmin={isSuperAdmin}
+            onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
 
           <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

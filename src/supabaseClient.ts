@@ -26,7 +26,13 @@ const INITIAL_DB: Record<string, any[]> = {
       id: 1,
       name: 'Ami Bachelor Mess',
       security_code: 'BACH26',
-      owner_id: 'manager-user-001'
+      owner_id: 'manager-user-001',
+      status: 'active',
+      transaction_id: 'TRX_INIT_DEMO',
+      payment_method: 'bKash',
+      payment_phone: '01700-000000',
+      created_at: new Date('2026-10-01').toISOString(),
+      last_active_at: new Date().toISOString()
     }
   ],
   months: [

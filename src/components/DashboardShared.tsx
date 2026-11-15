@@ -39,7 +39,8 @@ export type DashboardView =
   | 'accounts'
   | 'manage-hostel'
   | 'availability'
-  | 'settings';
+  | 'settings'
+  | 'super-admin';
 
 export const expenses = [
   ['Rice 25kg & Dal 5kg', 'Nur H.', '08 Oct', '৳ 2,450'],
@@ -266,6 +267,8 @@ interface DashboardHeaderProps {
   onOpenNoticeModal?: () => void;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
+  isSuperAdmin?: boolean;
+  onOpenSuperAdmin?: () => void;
 }
 
 export function DashboardHeader({
@@ -279,7 +282,9 @@ export function DashboardHeader({
   onSendNotice,
   onOpenNoticeModal,
   onOpenInstallPwa,
-  onLogout
+  onLogout,
+  isSuperAdmin = false,
+  onOpenSuperAdmin
 }: DashboardHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAdminNoticeModal, setShowAdminNoticeModal] = useState(false);
@@ -480,6 +485,23 @@ export function DashboardHeader({
                     </React.Fragment>
                   );
                 })}
+
+                {/* Super Admin Panel option if user is super admin */}
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      if (onOpenSuperAdmin) onOpenSuperAdmin();
+                    }}
+                    className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-black text-amber-700 bg-amber-50 hover:bg-amber-100/80 transition-all cursor-pointer border border-amber-200/80"
+                  >
+                    <span className="text-amber-700">
+                      <ShieldCheck size={16} />
+                    </span>
+                    <span>Super Admin Panel</span>
+                  </button>
+                )}
 
                 {/* Add to Home App option */}
                 <div className="my-1 border-t border-[#d6d6d6]/60" />

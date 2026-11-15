@@ -48,6 +48,8 @@ interface AdminPageProps {
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
+  isSuperAdmin?: boolean;
+  onOpenSuperAdmin?: () => void;
 }
 
 export default function AdminPage({
@@ -77,6 +79,8 @@ export default function AdminPage({
   showToast,
   onOpenInstallPwa,
   onLogout,
+  isSuperAdmin = false,
+  onOpenSuperAdmin,
 }: AdminPageProps) {
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -292,6 +296,8 @@ export default function AdminPage({
         onSendNotice={onSendNotice}
         onOpenInstallPwa={onOpenInstallPwa}
         onLogout={onLogout}
+        isSuperAdmin={isSuperAdmin}
+        onOpenSuperAdmin={onOpenSuperAdmin}
       />
 
       <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">

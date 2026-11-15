@@ -3,19 +3,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../supabaseClient';
 import { Building, KeyRound, ArrowLeft, Loader2, Copy, Check, UserCircle, ShieldCheck, Eye, AlertCircle, Trash2, Clock } from 'lucide-react';
 
-interface HostelData { id: number | string; name: string; security_code: string; role: 'manager' | 'member'; latestMonthId: string; }
+interface HostelData { 
+  id: number | string; 
+  name: string; 
+  security_code: string; 
+  role: 'manager' | 'member'; 
+  latestMonthId: string;
+  status?: 'active' | 'pending' | 'deactivated' | 'rejected';
+  rejection_reason?: string;
+  transaction_id?: string;
+}
 interface HostelOnboardingProps { session: any; managedHostels?: HostelData[]; joinedHostels?: HostelData[]; onJoined: (id: string) => void; }
 
 const MAX_HOSTELS = 3;
 
 export function HostelOnboarding({ session, managedHostels = [], joinedHostels = [], onJoined }: HostelOnboardingProps) {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
-  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [hostelName, setHostelName] = useState('');
   const [managerName, setManagerName] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket'>('bKash');
   const [memberName, setMemberName] = useState('');
   const [securityCode, setSecurityCode] = useState('');
-  const [createdData, setCreatedData] = useState<{ id: string; code: string } | null>(null);
+  const [createdData, setCreatedData] = useState<{ id: string; code: string; isPending?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [joinSuccessMsg, setJoinSuccessMsg] = useState('');
@@ -48,19 +60,41 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
     e.preventDefault();
     if (!canCreate) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} managed workspaces.`); return; }
     if (!hostelName.trim() || !managerName.trim()) { setError("Please fill in both the hostel name and your name."); return; }
+    if (!transactionId.trim()) { setError("Please enter your payment Transaction ID (TrxID)."); return; }
     setLoading(true);
     const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
-      const { data: hostel, error: hError } = await supabase.from('hostels').insert([{ name: hostelName, security_code: generatedCode, owner_id: session.user.id }]).select().single();
+      const { data: hostel, error: hError } = await supabase.from('hostels').insert([{ 
+        name: hostelName.trim(), 
+        security_code: generatedCode, 
+        owner_id: session.user.id,
+        status: 'pending',
+        transaction_id: transactionId.trim().toUpperCase(),
+        payment_method: paymentMethod,
+        payment_phone: paymentPhone.trim() || null
+      }]).select().single();
       if (hError) throw hError;
+
       const initialMonthName = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date());
-      const { data: month, error: mError } = await supabase.from('months').insert([{ name: initialMonthName, hostel_id: hostel.id, owner_id: session.user.id, security_code: generatedCode }]).select().single();
+      const { data: month, error: mError } = await supabase.from('months').insert([{ 
+        name: initialMonthName, 
+        hostel_id: hostel.id, 
+        owner_id: session.user.id, 
+        security_code: generatedCode 
+      }]).select().single();
       if (mError) throw mError;
       
       const today = new Date().toISOString().split('T')[0];
-      await supabase.from('roommates').insert([{ name: managerName.trim(), month_id: month.id, user_id: session.user.id, email: session.user.email, joined_date: today }]);
+      await supabase.from('roommates').insert([{ 
+        name: managerName.trim(), 
+        month_id: month.id, 
+        user_id: session.user.id, 
+        email: session.user.email, 
+        joined_date: today,
+        role: 'manager'
+      }]);
       
-      setCreatedData({ id: month.id, code: generatedCode });
+      setCreatedData({ id: month.id, code: generatedCode, isPending: true });
     } catch (err: any) { setError(err.message); } finally { setLoading(false); }
   };
 
@@ -129,31 +163,79 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                 {(managedHostels.length > 0 || joinedHostels.length > 0) && (
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">Your Workspaces</p>
-                    {managedHostels.map(h => (
-                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-4 pr-2 bg-slate-50 hover:bg-blue-50 rounded-2xl transition-all border border-slate-100 hover:border-blue-100 group">
-                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-3 flex-1 text-left">
-                          <div className="bg-blue-100 text-blue-600 p-2 rounded-xl"><ShieldCheck size={18} /></div>
-                          <div><p className="font-black text-sm text-slate-800">{h.name}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Manager</p></div>
-                        </button>
-                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors" title="Delete Workspace"><Trash2 size={16} /></button>
-                      </div>
-                    ))}
+                    {managedHostels.map(h => {
+                      const isPending = h.status === 'pending';
+                      const isRejected = h.status === 'rejected';
+                      const isDeactivated = h.status === 'deactivated';
+
+                      return (
+                        <div key={h.id} className={`w-full flex items-center justify-between p-2 pl-4 pr-2 rounded-2xl transition-all border ${
+                          isPending 
+                            ? 'bg-amber-50/70 border-amber-200' 
+                            : isRejected 
+                            ? 'bg-red-50/70 border-red-200' 
+                            : isDeactivated
+                            ? 'bg-slate-100/80 border-slate-200 opacity-75'
+                            : 'bg-slate-50 hover:bg-blue-50 border-slate-100 hover:border-blue-100'
+                        } group`}>
+                          <button 
+                            disabled={isPending || isDeactivated}
+                            onClick={() => onJoined(h.latestMonthId)} 
+                            className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
+                          >
+                            <div className={`p-2 rounded-xl ${
+                              isPending 
+                                ? 'bg-amber-100 text-amber-700' 
+                                : isRejected
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              {isPending ? <Clock size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-black text-sm text-slate-800">{h.name}</p>
+                                {isPending && (
+                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 animate-pulse">
+                                    Under Verification
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-red-200 text-red-800">
+                                    Rejected
+                                  </span>
+                                )}
+                                {isDeactivated && (
+                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-200 text-slate-600">
+                                    Deactivated
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {isPending ? 'Awaiting Super Admin Approval' : isRejected ? `Rejected: ${h.rejection_reason || 'Invalid TxID'}` : 'Manager'}
+                              </p>
+                            </div>
+                          </button>
+                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Delete Workspace"><Trash2 size={16} /></button>
+                        </div>
+                      );
+                    })}
                     {joinedHostels.map(h => (
                       <div key={h.id} className="w-full flex items-center justify-between p-2 pl-4 pr-2 bg-slate-50 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 hover:border-emerald-100 group">
-                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-3 flex-1 text-left">
+                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-3 flex-1 text-left cursor-pointer">
                           <div className="bg-emerald-100 text-emerald-600 p-2 rounded-xl"><Eye size={18} /></div>
                           <div><p className="font-black text-sm text-slate-800">{h.name}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Member</p></div>
                         </button>
-                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors" title="Leave Workspace"><Trash2 size={16} /></button>
+                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Leave Workspace"><Trash2 size={16} /></button>
                       </div>
                     ))}
                     <div className="w-full h-px bg-slate-100 my-4"></div>
                   </div>
                 )}
                 <div className="space-y-4">
-                  <button onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} disabled={!canJoin} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 active:scale-95 transition-all">Join Workspace</button>
+                  <button onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} disabled={!canJoin} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 active:scale-95 transition-all cursor-pointer">Join Workspace</button>
                   <div className="text-center">
-                    <button onClick={() => { setMode('create'); setCreateStep(1); setError(''); }} disabled={!canCreate} className="text-sm font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50">
+                    <button onClick={() => { setMode('create'); setCreateStep(1); setError(''); }} disabled={!canCreate} className="text-sm font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
                       {canCreate ? 'Create New Workspace' : `Create limit reached (${MAX_HOSTELS})`}
                     </button>
                   </div>
@@ -165,8 +247,12 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
               <motion.div key="create" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 {!createdData ? (
                   <>
-                    <button onClick={() => {setMode('select'); setError('');}} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 mb-6 font-black text-[11px] uppercase tracking-widest transition-colors"><ArrowLeft size={14} /> Back</button>
-                    <h2 className="text-2xl font-black mb-6 text-slate-800 text-center">Create Your Hostel</h2>
+                    <button onClick={() => {setMode('select'); setError('');}} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 mb-6 font-black text-[11px] uppercase tracking-widest transition-colors cursor-pointer"><ArrowLeft size={14} /> Back</button>
+                    <h2 className="text-2xl font-black mb-2 text-slate-800 text-center">Create Your Hostel</h2>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider text-center mb-6">
+                      Step {createStep} of 3
+                    </p>
+
                     <form onSubmit={handleCreate} className="space-y-4">
                       {createStep === 1 ? (
                         <>
@@ -174,30 +260,102 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Building className="text-slate-400" size={20} /></div>
                             <input type="text" placeholder="Hostel Name (e.g. Villa 40)" value={hostelName} onChange={(e) => setHostelName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-bold text-slate-800 outline-none capitalize" autoFocus />
                           </div>
-                          <button type="button" onClick={() => setCreateStep(2)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black transition-all">Next Step</button>
+                          <button type="button" disabled={!hostelName.trim()} onClick={() => setCreateStep(2)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-black transition-all cursor-pointer">Next: Manager Name</button>
                         </>
-                      ) : (
+                      ) : createStep === 2 ? (
                         <>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={20} /></div>
-                            <input type="text" placeholder="Your Name (Manager)" value={managerName} onChange={(e) => setManagerName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-bold text-slate-800 outline-none capitalize" />
+                            <input type="text" placeholder="Your Name (Manager)" value={managerName} onChange={(e) => setManagerName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-bold text-slate-800 outline-none capitalize" autoFocus />
                           </div>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setCreateStep(1)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold transition-all cursor-pointer">Back</button>
+                            <button type="button" disabled={!managerName.trim()} onClick={() => setCreateStep(3)} className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-black transition-all cursor-pointer">Next: Payment & TrxID</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* Payment Instructions Card */}
+                          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-left space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-sf-bold uppercase text-amber-800 tracking-wider">Manual Verification</span>
+                              <span className="text-[10px] font-mono font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">bKash / Nagad</span>
+                            </div>
+                            <p className="text-xs text-slate-600 font-sf-medium">
+                              Send creation fee via <strong>Send Money</strong> to:
+                            </p>
+                            <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-amber-200 text-xs font-mono font-bold text-slate-800">
+                              <span>01700-000000 (Personal)</span>
+                              <span className="text-[10px] text-amber-700 uppercase">bKash/Nagad</span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-sf-regular">
+                              After sending, enter your Transaction ID below. Super Admin will verify and activate your workspace.
+                            </p>
+                          </div>
+
+                          {/* Method Selector */}
+                          <div className="flex gap-2">
+                            {(['bKash', 'Nagad', 'Rocket'] as const).map((method) => (
+                              <button
+                                key={method}
+                                type="button"
+                                onClick={() => setPaymentMethod(method)}
+                                className={`flex-1 py-2.5 rounded-xl font-sf-bold text-xs border transition-all cursor-pointer ${
+                                  paymentMethod === method
+                                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {method}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Transaction ID Input */}
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              placeholder="Transaction ID (TrxID) *" 
+                              value={transactionId} 
+                              onChange={(e) => setTransactionId(e.target.value.toUpperCase())} 
+                              className="w-full px-4 py-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-mono font-bold text-slate-800 outline-none uppercase tracking-wider" 
+                              autoFocus 
+                            />
+                          </div>
+
+                          {/* Sender Phone (optional) */}
+                          <div className="relative">
+                            <input 
+                              type="tel" 
+                              placeholder="Sender Phone Number (Optional)" 
+                              value={paymentPhone} 
+                              onChange={(e) => setPaymentPhone(e.target.value)} 
+                              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-300 transition-all font-sf-medium text-xs text-slate-800 outline-none" 
+                            />
+                          </div>
+
                           {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
-                          <button type="submit" disabled={!managerName.trim() || loading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2">{loading ? <Loader2 className="animate-spin" size={20} /> : 'Generate Security Code'}</button>
+                          
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => setCreateStep(2)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold transition-all cursor-pointer">Back</button>
+                            <button type="submit" disabled={!transactionId.trim() || loading} className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20">{loading ? <Loader2 className="animate-spin" size={20} /> : 'Submit for Verification'}</button>
+                          </div>
                         </>
                       )}
                     </form>
                   </>
                 ) : (
                   <div className="text-center py-4">
-                    <div className="bg-green-100 text-green-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><Check size={32} strokeWidth={3} /></div>
-                    <h2 className="text-2xl font-black text-slate-800 mb-2">Hostel Created!</h2>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-6">Share this code to members</p>
-                    <div onClick={copyToClipboard} className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 mb-6 cursor-pointer hover:bg-slate-100 hover:border-blue-300 transition-all group relative">
-                      <span className="text-4xl font-black tracking-widest text-blue-600 font-mono">{createdData.code}</span>
-                      <div className="absolute top-3 right-3 text-slate-400 group-hover:text-blue-500 transition-colors">{copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}</div>
+                    <div className="bg-amber-100 text-amber-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><Clock size={32} strokeWidth={2.5} /></div>
+                    <h2 className="text-2xl font-black text-slate-800 mb-2">Submitted for Verification!</h2>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-4">Awaiting Super Admin Approval</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6 text-xs text-slate-600 space-y-2 text-left">
+                      <p><strong>Hostel:</strong> {hostelName}</p>
+                      <p><strong>Transaction ID:</strong> <span className="font-mono text-blue-600 font-bold">{transactionId}</span></p>
+                      <p><strong>Security Code:</strong> <span className="font-mono font-bold">{createdData.code}</span></p>
+                      <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">The Super Admin will check the transaction statement and activate your workspace soon.</p>
                     </div>
-                    <button onClick={() => onJoined(createdData.id)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-xl shadow-blue-500/20 transition-all active:scale-95">Enter Manager Dashboard</button>
+                    <button onClick={() => { setCreatedData(null); setMode('select'); }} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black shadow-xl shadow-slate-900/20 transition-all active:scale-95 cursor-pointer">Back to Workspaces</button>
                   </div>
                 )}
               </motion.div>
