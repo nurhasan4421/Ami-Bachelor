@@ -50,7 +50,7 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [months, setMonths] = useState<MonthSheet[]>([]);
-  const [activeMonthId, setActiveMonthId] = useState<string | null>(() => localStorage.getItem('activeMonthId') || 'month-current');
+  const [activeMonthId, setActiveMonthId] = useState<string | null>(() => localStorage.getItem('activeMonthId'));
   const [isInitialSyncing, setIsInitialSyncing] = useState(true);
   
   const [activeView, setActiveView] = useState<ViewState>(() => {
@@ -959,15 +959,27 @@ export default function App() {
             <span>Loading workspace...</span>
           </div>
         </div>
+      ) : activeView === 'super-admin' ? (
+        <SuperAdminPage
+          currentUserId={session?.user?.id}
+          currentUserEmail={session?.user?.email}
+          onExitSuperAdmin={() => setActiveView('dashboard')}
+          onSelectHostelMonth={(monthId: string) => {
+            setActiveMonthId(monthId);
+            setActiveView('dashboard');
+            fetchSheetData();
+          }}
+          showToast={showToast}
+        />
       ) : !activeMonthId ? (
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
-          <div className="p-6 flex justify-between items-center">
+          <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
             {isSuperAdmin ? (
               <button
                 onClick={() => setActiveView('super-admin')}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-800 text-xs font-sf-bold rounded-[30px] border border-amber-300 hover:bg-amber-100 transition-all cursor-pointer shadow-xs"
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-sf-black rounded-[30px] transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
               >
-                <ShieldCheck size={16} className="text-amber-600" /> Super Admin Panel
+                <ShieldCheck size={18} /> Super Admin Panel
               </button>
             ) : <div />}
             <button
@@ -988,18 +1000,6 @@ export default function App() {
             }}
           />
         </div>
-      ) : activeView === 'super-admin' ? (
-        <SuperAdminPage
-          currentUserId={session?.user?.id}
-          currentUserEmail={session?.user?.email}
-          onExitSuperAdmin={() => setActiveView('dashboard')}
-          onSelectHostelMonth={(monthId: string) => {
-            setActiveMonthId(monthId);
-            setActiveView('dashboard');
-            fetchSheetData();
-          }}
-          showToast={showToast}
-        />
       ) : activeView === 'dashboard' ? (
         viewMode === 'manager' ? (
           <AdminPage

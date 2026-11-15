@@ -411,36 +411,38 @@ export function DashboardHeader({
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-[#f3f3f1] animate-pulse" />
           </button>
 
-          {/* Animated Hamburger Icon Button (transparent, just icon color) */}
+          {/* Animated Hamburger Icon Button */}
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle navigation menu"
-            className={`relative flex h-[34px] w-[34px] items-center justify-center transition-colors active:scale-95 cursor-pointer bg-transparent border-0 ${
-              isMenuOpen ? 'text-red-600' : 'text-[#141414] hover:text-red-600'
+            className={`relative flex h-[38px] w-[38px] items-center justify-center rounded-xl transition-all active:scale-95 cursor-pointer border ${
+              isMenuOpen 
+                ? 'bg-red-50 border-red-200 text-red-600' 
+                : 'bg-white border-[#d6d6d6] text-[#141414] hover:border-red-400 shadow-xs'
             }`}
             title="Navigation Menu"
           >
             <div className="flex h-[18px] w-[20px] flex-col items-center justify-center gap-[4.5px]">
               <span
-                className={`block h-[2px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
+                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
                   isMenuOpen
-                    ? 'bg-red-600 rotate-45 translate-y-[6.5px]'
-                    : 'bg-current'
+                    ? 'bg-red-600 rotate-45 translate-y-[7px]'
+                    : 'bg-[#141414]'
                 }`}
               />
               <span
-                className={`block h-[2px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
+                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
                   isMenuOpen
                     ? 'opacity-0 translate-x-2'
-                    : 'bg-current'
+                    : 'bg-[#141414]'
                 }`}
               />
               <span
-                className={`block h-[2px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
+                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
                   isMenuOpen
-                    ? 'bg-red-600 -rotate-45 -translate-y-[6.5px]'
-                    : 'bg-current'
+                    ? 'bg-red-600 -rotate-45 -translate-y-[7px]'
+                    : 'bg-[#141414]'
                 }`}
               />
             </div>
