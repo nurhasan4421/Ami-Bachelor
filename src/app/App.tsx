@@ -16,7 +16,7 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import SuperAdminPage from '@/components/SuperAdminPage';
 
-import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell } from 'lucide-react';
+import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power } from 'lucide-react';
 
 interface HostelData { 
   id: number; 
@@ -276,6 +276,9 @@ export default function App() {
   const activeHostelId = months.find(m => m.id === activeMonthId)?.hostels?.id;
   const visibleMonthsInHostel = months.filter(m => m.hostels?.id === activeHostelId);
   const currentMonthObj = months.find(m => m.id === activeMonthId);
+  const currentHostel = currentMonthObj?.hostels;
+  const currentHostelStatus = (currentHostel as any)?.status || 'active';
+  const isHostelLocked = currentHostelStatus === 'deactivated' || currentHostelStatus === 'pending' || currentHostelStatus === 'rejected';
 
   const monthsByYear = useMemo(() => {
     return visibleMonthsInHostel.reduce((acc, m) => {
@@ -999,6 +1002,75 @@ export default function App() {
               await fetchSheetData();
             }}
           />
+        </div>
+      ) : isHostelLocked ? (
+        <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414] items-center justify-center p-6 text-center select-none">
+          <div className="w-full max-w-md bg-white p-8 rounded-[2.5rem] border border-slate-200/90 shadow-2xl space-y-4">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
+              currentHostelStatus === 'deactivated' 
+                ? 'bg-slate-100 text-slate-700' 
+                : currentHostelStatus === 'rejected'
+                ? 'bg-red-100 text-red-600'
+                : 'bg-amber-100 text-amber-700 animate-pulse'
+            }`}>
+              {currentHostelStatus === 'deactivated' ? (
+                <Power size={32} />
+              ) : currentHostelStatus === 'rejected' ? (
+                <X size={32} />
+              ) : (
+                <Clock size={32} />
+              )}
+            </div>
+
+            <h2 className="font-sf-black text-2xl text-slate-900 tracking-tight">
+              {currentHostelStatus === 'deactivated' 
+                ? 'Workspace Deactivated' 
+                : currentHostelStatus === 'rejected'
+                ? 'Request Rejected'
+                : 'Verification Pending'}
+            </h2>
+
+            <p className="font-sf-medium text-xs text-slate-500 leading-relaxed">
+              {currentHostelStatus === 'deactivated' ? (
+                <span>
+                  <strong>"{currentHostel?.name}"</strong> has been temporarily suspended by the Super Admin. Please contact support or renew verification to restore access.
+                </span>
+              ) : currentHostelStatus === 'rejected' ? (
+                <span>
+                  Your request for <strong>"{currentHostel?.name}"</strong> was rejected: <br />
+                  <span className="text-red-600 font-bold mt-1 block">{(currentHostel as any)?.rejection_reason || 'Invalid Transaction ID'}</span>
+                </span>
+              ) : (
+                <span>
+                  <strong>"{currentHostel?.name}"</strong> is currently pending manual transaction verification by the Super Admin. You will gain access as soon as it is approved.
+                </span>
+              )}
+            </p>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMonthId(null);
+                  localStorage.removeItem('activeMonthId');
+                  fetchMonthsAndHostels();
+                }}
+                className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-sf-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg active:scale-95"
+              >
+                Back to Workspaces
+              </button>
+
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setActiveView('super-admin')}
+                  className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-sf-bold text-xs transition-all cursor-pointer border border-amber-200"
+                >
+                  Open Super Admin Panel
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       ) : activeView === 'dashboard' ? (
         viewMode === 'manager' ? (
