@@ -243,10 +243,17 @@ export default function App() {
     // Find the month configured as active for the workspace
     const hostelActiveMonth = allAccessibleMonths.find(m => m.show_actions_to_members === true);
 
-    if (!activeMonthId && allAccessibleMonths.length > 0) {
-      setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0].id);
+    const savedMonthId = localStorage.getItem('activeMonthId');
+    if (savedMonthId && allAccessibleMonths.some(m => m.id === savedMonthId)) {
+      setActiveMonthId(savedMonthId);
+    } else if (savedMonthId === null) {
+      // User explicitly exited to Setup Screen - do NOT auto-redirect!
+      setActiveMonthId(null);
     } else if (activeMonthId && !allAccessibleMonths.some(m => m.id === activeMonthId)) {
       setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0]?.id || null);
+    } else if (!activeMonthId && allAccessibleMonths.length > 0) {
+      // Only initial load if no explicit exit
+      setActiveMonthId(hostelActiveMonth?.id || allAccessibleMonths[0].id);
     }
     const mHostelsMap = new Map<number, HostelData>();
     managedM.forEach(m => { 
@@ -1138,11 +1145,6 @@ export default function App() {
             showToast={showToast}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
-            onBackToSetup={() => {
-              setActiveMonthId(null);
-              localStorage.removeItem('activeMonthId');
-              fetchMonthsAndHostels();
-            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -1165,11 +1167,6 @@ export default function App() {
             currentUserId={session?.user?.id}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
-            onBackToSetup={() => {
-              setActiveMonthId(null);
-              localStorage.removeItem('activeMonthId');
-              fetchMonthsAndHostels();
-            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -1187,11 +1184,6 @@ export default function App() {
             onSendNotice={handleSendNotice}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
-            onBackToSetup={() => {
-              setActiveMonthId(null);
-              localStorage.removeItem('activeMonthId');
-              fetchMonthsAndHostels();
-            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -2148,6 +2140,19 @@ export default function App() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Back to Setup Screen button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('activeMonthId');
+                      setActiveMonthId(null);
+                    }}
+                    className="w-full py-3 bg-white hover:bg-slate-50 text-[#141414] border border-[#d6d6d6] rounded-[14px] font-sf-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                  >
+                    <RotateCcw size={15} className="text-[#626262]" />
+                    <span>Back to Setup Screen (Workspaces & Onboarding)</span>
+                  </button>
                 </div>
 
                 {/* Audit Trail Logs */}

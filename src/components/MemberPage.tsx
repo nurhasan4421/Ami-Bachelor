@@ -29,7 +29,6 @@ interface MemberPageProps {
   currentUserId?: string;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
-  onBackToSetup?: () => void;
   isSuperAdmin?: boolean;
   onOpenSuperAdmin?: () => void;
 }
@@ -52,7 +51,6 @@ export default function MemberPage({
   currentUserId,
   onOpenInstallPwa,
   onLogout,
-  onBackToSetup,
   isSuperAdmin = false,
   onOpenSuperAdmin,
 }: MemberPageProps) {
@@ -156,7 +154,6 @@ export default function MemberPage({
         onOpenNoticeModal={() => setShowNoticeModal(true)}
         onOpenInstallPwa={onOpenInstallPwa}
         onLogout={onLogout}
-        onBackToSetup={onBackToSetup}
         isSuperAdmin={isSuperAdmin}
         onOpenSuperAdmin={onOpenSuperAdmin}
       />
