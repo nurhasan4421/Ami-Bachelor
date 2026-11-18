@@ -6,25 +6,21 @@ export interface ParsedMealEntry {
   totalMeals: number;
 }
 
-export interface ParsedDepositEntry {
-  type: 'deposit';
+export interface ParsedExpenseEntry {
+  type: 'expense';
   dateStr: string;
   displayDate: string;
-  deposits: Record<string, number>;
-  totalAmount: number;
+  category: 'Account' | 'Meal' | 'Grocery';
+  paidBy: string;
+  amount: number;
+  calculatedAmount: number;
+  description: string;
+  isAmountMismatch: boolean;
+  statedAmount: number;
 }
 
-export type ParsedTelegramEntry = ParsedMealEntry | ParsedDepositEntry;
+export type ParsedTelegramEntry = ParsedMealEntry | ParsedExpenseEntry;
 
-// Month names in English and Bangla transliteration
-const MONTH_NAMES = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december'
-];
-
-/**
- * Normalizes text: lowercases, converts Bangla digits to English digits
- */
 export function normalizeText(text: string): string {
   const banglaDigits: Record<string, string> = {
     '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
@@ -35,9 +31,6 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-/**
- * Format a Date object into "Sunday, November 5, 2026"
- */
 export function formatDisplayDate(date: Date): string {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -51,19 +44,11 @@ export function formatDateISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Extract target date from text. Defaults to today.
- * Supports:
- * - "meal 5-", "5 tarikh", "5 traikh", "5th", "5 tarik", "date 5"
- * - "today", "ajke", "ajker"
- * - "yesterday", "kal", "kalke", "kaler", "gothokal"
- * - "2026-11-05"
- */
 export function extractDateFromText(text: string, referenceDate: Date = new Date()): { date: Date; textWithoutDate: string } {
   const normalized = normalizeText(text);
   const now = new Date(referenceDate);
 
-  // Check today / yesterday
+  // Check yesterday
   if (/\b(yesterday|kal|kalke|kaler|gothokal|goto\s*kal)\b/i.test(normalized)) {
     const yDay = new Date(now);
     yDay.setDate(yDay.getDate() - 1);
@@ -71,6 +56,7 @@ export function extractDateFromText(text: string, referenceDate: Date = new Date
     return { date: yDay, textWithoutDate: cleaned };
   }
 
+  // Check today
   if (/\b(today|aj|ajke|ajker)\b/i.test(normalized)) {
     const cleaned = normalized.replace(/\b(today|aj|ajke|ajker)\b/gi, ' ');
     return { date: now, textWithoutDate: cleaned };
@@ -106,9 +92,6 @@ export function extractDateFromText(text: string, referenceDate: Date = new Date
   return { date: now, textWithoutDate: normalized };
 }
 
-/**
- * Fuzzy matches a raw name token against the registered roommate names in the hostel
- */
 export function matchRoommateName(rawToken: string, registeredNames: string[]): string | null {
   const cleanToken = rawToken.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   if (!cleanToken) return null;
@@ -137,14 +120,6 @@ export function matchRoommateName(rawToken: string, registeredNames: string[]): 
   return null;
 }
 
-/**
- * Parses a free-form message for meal updates.
- * Examples:
- * - "meal 5- nur 1, ajmain 1 , tanvir 2"
- * - "5 traikh nur 1 meal,ajmain 2 ,tanvir 1 meal,baki sobai 0"
- * - "ajker meal: Nur 2, Siam 1, Tanvir 0"
- * - "nur 1, rakib 2, siam 1, baki 0"
- */
 export function parseMealMessage(
   rawText: string,
   knownRoommates: string[],
@@ -152,7 +127,6 @@ export function parseMealMessage(
 ): ParsedMealEntry | null {
   const { date, textWithoutDate } = extractDateFromText(rawText, referenceDate);
 
-  // Remove common filler words
   let cleaned = textWithoutDate
     .replace(/\b(meal|meals|mil|er|khabar|kheyeche|khelo)\b/gi, ' ')
     .replace(/[:\-_]/g, ' ')
@@ -160,56 +134,47 @@ export function parseMealMessage(
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Check if "baki sobai 0" or "others 0" is specified
   const isBakiZero = /\b(baki|sobai|others|rest)\s*(sobai|all)?\s*([0-9]+)?\b/i.test(cleaned);
 
   const mealMap: Record<string, number> = {};
 
-  // If "baki sobai 0" is present, set all roommates to 0 by default
   if (isBakiZero) {
     for (const r of knownRoommates) {
       mealMap[r] = 0;
     }
   }
 
-  // Remove "baki sobai 0" pattern from text to not confuse name matcher
   cleaned = cleaned.replace(/\b(baki|sobai|others|rest)\s*(sobai|all)?\s*([0-9]+)?\b/gi, ' ');
 
-  // Look for Name + Number pairs
-  // e.g. "nur 1", "ajmain 2", "tanvir 1.5", "1 nur"
   const tokens = cleaned.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
 
   for (const token of tokens) {
-    // sub-split by spaces
     const subParts = token.split(/\s+/).filter(Boolean);
     for (let i = 0; i < subParts.length; i++) {
       const part = subParts[i];
-      // Check if current part is a name and next part is a number: "nur 1" or "nur 1.5"
       const matched = matchRoommateName(part, knownRoommates);
       if (matched && i + 1 < subParts.length) {
         const nextPart = subParts[i + 1];
         const num = parseFloat(nextPart);
         if (!isNaN(num) && num >= 0 && num <= 10) {
           mealMap[matched] = num;
-          i++; // skip number
+          i++;
           continue;
         }
       }
 
-      // Check reverse: number first then name: "1 nur"
       const asNum = parseFloat(part);
       if (!isNaN(asNum) && asNum >= 0 && asNum <= 10 && i + 1 < subParts.length) {
         const revMatched = matchRoommateName(subParts[i + 1], knownRoommates);
         if (revMatched) {
           mealMap[revMatched] = asNum;
-          i++; // skip name
+          i++;
           continue;
         }
       }
     }
   }
 
-  // Also check single un-tokenized string in case commas were omitted: "nur 1 ajmain 2 tanvir 1"
   if (Object.keys(mealMap).length === 0) {
     const words = cleaned.split(/\s+/).filter(Boolean);
     for (let i = 0; i < words.length - 1; i++) {
@@ -240,60 +205,123 @@ export function parseMealMessage(
 }
 
 /**
- * Parses deposit messages.
- * Examples:
- * - "deposit nur 1500, ajmain 2000"
- * - "joma 5 tarik nur 2000"
+ * Parses multi-line or single-line deposit / expense messages (like bazar list)
+ * Format example:
+ * ajmain - Sim 70
+ * Begun 45
+ * Alu 50
+ * Sosa:25
+ * Gajor:50
+ * Morich :20
+ * Mach 1790
+ * Mangsho 1020
+ * Dim 270
+ * 
+ * Total 3340
  */
-export function parseDepositMessage(
+export function parseBazarExpenseMessage(
   rawText: string,
   knownRoommates: string[],
+  selectedCategory: 'Account' | 'Meal' | 'Grocery' = 'Grocery',
   referenceDate: Date = new Date()
-): ParsedDepositEntry | null {
-  const isDeposit = /\b(deposit|joma|payment|taka|tk|fund)\b/i.test(rawText);
-  if (!isDeposit) return null;
+): ParsedExpenseEntry | null {
+  const normText = normalizeText(rawText);
+  const lines = normText.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
 
-  const { date, textWithoutDate } = extractDateFromText(rawText, referenceDate);
-  const cleaned = textWithoutDate
-    .replace(/\b(deposit|joma|payment|taka|tk|fund|dilo|dise)\b/gi, ' ')
-    .replace(/[:\-_]/g, ' ')
-    .replace(/,/g, ' , ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const { date } = extractDateFromText(normText, referenceDate);
 
-  const depositMap: Record<string, number> = {};
-  const words = cleaned.split(/\s+/).filter(Boolean);
+  // 1. Detect Payer (e.g. from first line "ajmain - Sim 70" or "nur 1500" or anywhere)
+  let detectedPayer: string | null = null;
 
-  for (let i = 0; i < words.length - 1; i++) {
-    const matched = matchRoommateName(words[i], knownRoommates);
-    if (matched) {
-      const num = parseFloat(words[i + 1]);
-      if (!isNaN(num) && num > 0) {
-        depositMap[matched] = num;
-        i++;
-      }
-    } else {
-      // number then name: "1500 nur"
-      const asNum = parseFloat(words[i]);
-      if (!isNaN(asNum) && asNum > 0) {
-        const revMatched = matchRoommateName(words[i + 1], knownRoommates);
-        if (revMatched) {
-          depositMap[revMatched] = asNum;
-          i++;
-        }
+  // If category is Grocery, "Meal" is also an allowed payer
+  const allowedPayers = selectedCategory === 'Grocery' ? [...knownRoommates, 'Meal'] : knownRoommates;
+
+  // Check top line for "name - item amount" or "name : item amount"
+  const firstLine = lines[0];
+  const firstDash = firstLine.split(/[-:]/);
+  if (firstDash.length > 1) {
+    const candidate = matchRoommateName(firstDash[0].trim(), allowedPayers);
+    if (candidate) {
+      detectedPayer = candidate;
+    }
+  }
+
+  // If not found in dash split, check first line words
+  if (!detectedPayer) {
+    const firstWords = firstLine.split(/\s+/);
+    for (const w of firstWords) {
+      const candidate = matchRoommateName(w, allowedPayers);
+      if (candidate) {
+        detectedPayer = candidate;
+        break;
       }
     }
   }
 
-  if (Object.keys(depositMap).length === 0) return null;
+  // If still not found, search through any line for roommate names
+  if (!detectedPayer) {
+    for (const line of lines) {
+      for (const w of line.split(/[\s\-:]+/)) {
+        const candidate = matchRoommateName(w, allowedPayers);
+        if (candidate) {
+          detectedPayer = candidate;
+          break;
+        }
+      }
+      if (detectedPayer) break;
+    }
+  }
 
-  const totalAmount = Object.values(depositMap).reduce((sum, val) => sum + val, 0);
+  // Default to first roommate if not found or if user didn't specify
+  if (!detectedPayer) {
+    detectedPayer = knownRoommates[0] || 'Manager';
+  }
+
+  // 2. Parse items and amounts, and look for stated Total
+  let calculatedSum = 0;
+  let statedTotal: number | null = null;
+  const itemLines: string[] = [];
+
+  for (const line of lines) {
+    // Check if line is "Total 3340" or "মোট ৩৩৪০"
+    const totalMatch = line.match(/\b(total|mot|subtotal|all)\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+    if (totalMatch) {
+      statedTotal = parseFloat(totalMatch[2]);
+      continue;
+    }
+
+    // Try to find numbers in this line: e.g. "Begun 45", "Sosa:25", "Mach 1790"
+    // Extract last number on the line as amount
+    const numMatches = [...line.matchAll(/\b(\d+(?:\.\d+)?)\b/g)];
+    if (numMatches.length > 0) {
+      const lastMatch = numMatches[numMatches.length - 1];
+      const amt = parseFloat(lastMatch[1]);
+      if (!isNaN(amt) && amt > 0) {
+        calculatedSum += amt;
+      }
+    }
+    itemLines.push(line);
+  }
+
+  const finalAmount = statedTotal !== null ? statedTotal : calculatedSum;
+  if (finalAmount <= 0) return null;
+
+  const isAmountMismatch = statedTotal !== null && Math.abs(statedTotal - calculatedSum) > 0.01;
+
+  // The full text as description
+  const description = rawText.trim();
 
   return {
-    type: 'deposit',
+    type: 'expense',
     dateStr: formatDateISO(date),
     displayDate: formatDisplayDate(date),
-    deposits: depositMap,
-    totalAmount
+    category: selectedCategory,
+    paidBy: detectedPayer,
+    amount: finalAmount,
+    calculatedAmount: calculatedSum,
+    statedAmount: statedTotal !== null ? statedTotal : calculatedSum,
+    isAmountMismatch,
+    description
   };
 }

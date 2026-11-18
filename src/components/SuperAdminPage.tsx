@@ -20,7 +20,8 @@ import {
   Mail,
   Receipt,
   Eye,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Bot
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
@@ -30,6 +31,7 @@ export interface SuperAdminHostel {
   name: string;
   security_code: string;
   status: 'active' | 'pending' | 'deactivated' | 'rejected';
+  bot_enabled?: boolean;
   owner_id?: string;
   created_at: string;
   last_active_at?: string;
@@ -276,6 +278,34 @@ export default function SuperAdminPage({
       }
     } catch (err: any) {
       if (showToast) showToast(err.message || 'Failed to change status', 'error');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleToggleBot = async (hostel: SuperAdminHostel) => {
+    const nextState = !Boolean(hostel.bot_enabled);
+    setActionLoadingId(`bot-${hostel.id}`);
+    try {
+      const { error } = await supabase
+        .from('hostels')
+        .update({ bot_enabled: nextState })
+        .eq('id', hostel.id);
+
+      if (error) throw error;
+
+      setHostels((prev) =>
+        prev.map((h) => (h.id === hostel.id ? { ...h, bot_enabled: nextState } : h))
+      );
+
+      if (showToast) {
+        showToast(
+          `Telegram Bot ${nextState ? 'Unlocked & Enabled' : 'Disabled'} for "${hostel.name}"`,
+          nextState ? 'success' : 'info'
+        );
+      }
+    } catch (err: any) {
+      if (showToast) showToast(err.message || 'Failed to toggle bot', 'error');
     } finally {
       setActionLoadingId(null);
     }
@@ -541,6 +571,25 @@ export default function SuperAdminPage({
                         </>
                       ) : (
                         <>
+                          {/* Telegram Bot Toggle */}
+                          <button
+                            type="button"
+                            disabled={actionLoadingId === `bot-${hostel.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleBot(hostel);
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-[12px] font-sf-bold text-xs border transition-all cursor-pointer active:scale-95 ${
+                              hostel.bot_enabled
+                                ? 'bg-[#229ED9]/15 text-[#1b7fae] border-[#229ED9]/40 hover:bg-[#229ED9]/25'
+                                : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                            }`}
+                            title={hostel.bot_enabled ? 'Disable Telegram Bot for this hostel' : 'Enable Telegram Bot for this hostel'}
+                          >
+                            <Bot size={14} className={hostel.bot_enabled ? 'text-[#229ED9]' : 'text-slate-400'} />
+                            <span>Bot: {hostel.bot_enabled ? 'ON' : 'OFF'}</span>
+                          </button>
+
                           <button
                             type="button"
                             disabled={isLoadingThis}

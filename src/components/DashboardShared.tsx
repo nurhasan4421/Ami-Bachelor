@@ -267,6 +267,7 @@ interface DashboardHeaderProps {
   onOpenNoticeModal?: () => void;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
+  onBackToSetup?: () => void;
   isSuperAdmin?: boolean;
   onOpenSuperAdmin?: () => void;
 }
@@ -283,6 +284,7 @@ export function DashboardHeader({
   onOpenNoticeModal,
   onOpenInstallPwa,
   onLogout,
+  onBackToSetup,
   isSuperAdmin = false,
   onOpenSuperAdmin
 }: DashboardHeaderProps) {
@@ -520,6 +522,23 @@ export function DashboardHeader({
                   </span>
                   <span>Install / Add to Home</span>
                 </button>
+
+                {/* Back to Setup Screen option */}
+                {onBackToSetup && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onBackToSetup();
+                    }}
+                    className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-slate-700 hover:bg-[#e5e6e1] transition-all cursor-pointer"
+                  >
+                    <span className="text-[#626262]">
+                      <RotateCcw size={16} />
+                    </span>
+                    <span>Back to Setup Screen</span>
+                  </button>
+                )}
 
                 {/* Logout option */}
                 {onLogout && (

@@ -48,6 +48,7 @@ interface AdminPageProps {
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onOpenInstallPwa?: () => void;
   onLogout?: () => void;
+  onBackToSetup?: () => void;
   isSuperAdmin?: boolean;
   onOpenSuperAdmin?: () => void;
 }
@@ -79,6 +80,7 @@ export default function AdminPage({
   showToast,
   onOpenInstallPwa,
   onLogout,
+  onBackToSetup,
   isSuperAdmin = false,
   onOpenSuperAdmin,
 }: AdminPageProps) {
@@ -296,6 +298,7 @@ export default function AdminPage({
         onSendNotice={onSendNotice}
         onOpenInstallPwa={onOpenInstallPwa}
         onLogout={onLogout}
+        onBackToSetup={onBackToSetup}
         isSuperAdmin={isSuperAdmin}
         onOpenSuperAdmin={onOpenSuperAdmin}
       />

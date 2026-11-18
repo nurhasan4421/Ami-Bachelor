@@ -16,20 +16,21 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import SuperAdminPage from '@/components/SuperAdminPage';
 
-import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power, Bot } from 'lucide-react';
+import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power, Bot, Info } from 'lucide-react';
 
 interface HostelData { 
   id: number; 
   name: string; 
   security_code: string; 
   telegram_link_code?: string;
+  bot_enabled?: boolean;
   role: 'manager' | 'member'; 
   latestMonthId: string;
   status?: 'active' | 'pending' | 'deactivated' | 'rejected';
   rejection_reason?: string;
   transaction_id?: string;
 }
-interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; telegram_link_code?: string; status?: string; }; }
+interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; telegram_link_code?: string; bot_enabled?: boolean; status?: string; }; }
 interface Roommate { id: string; name: string; user_id: string | null; month_id: string; role?: string; email?: string; phone?: string; address?: string; joined_date?: string; }
 interface Expense { id: string; description: string; amount: number; category: string; paidBy: string; date: string; }
 interface DailyMeal { id?: string; date: string; meals: { [person: string]: number }; }
@@ -86,6 +87,7 @@ export default function App() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedTelegramCode, setCopiedTelegramCode] = useState(false);
   const [regeneratingTelegram, setRegeneratingTelegram] = useState(false);
+  const [showTelegramInfoOverlay, setShowTelegramInfoOverlay] = useState(false);
   const [viewMode, setViewMode] = useState<'manager' | 'member'>('manager');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -218,7 +220,7 @@ export default function App() {
     if (!session) return;
     const { data: managedRes } = await supabase
       .from('months')
-      .select('*, hostels(id, name, security_code, telegram_link_code, status, transaction_id, rejection_reason)')
+      .select('*, hostels(id, name, security_code, telegram_link_code, bot_enabled, status, transaction_id, rejection_reason)')
       .eq('owner_id', session.user.id)
       .order('created_at', { ascending: false });
       
@@ -228,7 +230,7 @@ export default function App() {
       const monthIds = [...new Set(myRooms.map(r => r.month_id))];
       const { data } = await supabase
         .from('months')
-        .select('*, hostels(id, name, security_code, telegram_link_code, status, transaction_id, rejection_reason)')
+        .select('*, hostels(id, name, security_code, telegram_link_code, bot_enabled, status, transaction_id, rejection_reason)')
         .in('id', monthIds)
         .order('created_at', { ascending: false });
       if (data) joinedRes = data;
@@ -1136,6 +1138,11 @@ export default function App() {
             showToast={showToast}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            onBackToSetup={() => {
+              setActiveMonthId(null);
+              localStorage.removeItem('activeMonthId');
+              fetchMonthsAndHostels();
+            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -1158,6 +1165,11 @@ export default function App() {
             currentUserId={session?.user?.id}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            onBackToSetup={() => {
+              setActiveMonthId(null);
+              localStorage.removeItem('activeMonthId');
+              fetchMonthsAndHostels();
+            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -1175,6 +1187,11 @@ export default function App() {
             onSendNotice={handleSendNotice}
             onOpenInstallPwa={() => setShowInstallPwa(true)}
             onLogout={handleLogout}
+            onBackToSetup={() => {
+              setActiveMonthId(null);
+              localStorage.removeItem('activeMonthId');
+              fetchMonthsAndHostels();
+            }}
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
           />
@@ -1860,117 +1877,6 @@ export default function App() {
             {/* View: Manage Hostel */}
             {activeView === 'manage-hostel' && (
               <div className="flex flex-col gap-[16px]">
-                {/* Hero Access Credentials Card */}
-                <section className="flex h-[180px] flex-col justify-between rounded-[24px] bg-[linear-gradient(113.5deg,#212121_0.77%,#000_100%)] px-[23px] py-[19px] text-[#e5e6e1] shadow-xl">
-                  <div>
-                    <span className="font-sf-regular text-[9px] text-[#8e8e8e] uppercase tracking-wider">
-                      Workspace Invite Security Code
-                    </span>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="font-sf-bold text-3xl text-white tracking-[0.2em]">
-                        {currentMonthObj?.hostels?.security_code || 'BACH26'}
-                      </span>
-                      <button
-                        onClick={handleCopyCode}
-                        className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-[10px] transition-colors"
-                        title="Copy Code"
-                      >
-                        {copiedCode ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-white/10 pt-3">
-                    <span className="font-sf-regular text-xs text-[#8e8e8e]">
-                      {roommates.length} Total Flatmates Joined
-                    </span>
-                    <span className="font-sf-bold text-sm text-red-500">
-                      {effectiveIsManager ? 'Manager Controls' : 'Directory'}
-                    </span>
-                  </div>
-                </section>
-
-                {/* Telegram Bot Assistant Card (Directly Under Security Code) */}
-                <section className="flex flex-col justify-between rounded-[24px] bg-[linear-gradient(135deg,#0e1e2d_0%,#1c2833_100%)] p-[20px] text-white border border-[#2a3b4c] shadow-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-[12px] bg-[#229ED9]/20 border border-[#229ED9]/30 flex items-center justify-center text-[#229ED9]">
-                        <Bot size={20} />
-                      </div>
-                      <div>
-                        <h4 className="font-sf-bold text-[14px] text-white flex items-center gap-2">
-                          Telegram Meal & Deposit Bot
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#229ED9]/20 text-[#229ED9] border border-[#229ED9]/30">
-                            @Amibachelorbot
-                          </span>
-                        </h4>
-                        <p className="font-sf-regular text-[11px] text-[#9bb0c1] mt-0.5">
-                          Send daily meals in natural text & Banglish via Telegram
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Code & Quick Actions */}
-                  <div className="mt-4 p-3 rounded-[16px] bg-black/40 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div>
-                      <span className="font-sf-regular text-[9px] text-[#8e9ca8] uppercase tracking-wider block">
-                        Bot Connect Code
-                      </span>
-                      <span className="font-sf-bold text-xl text-[#229ED9] tracking-[0.15em] font-mono">
-                        {currentMonthObj?.hostels?.telegram_link_code || 'TG-LINK'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button
-                        onClick={handleCopyTelegramCode}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-[#229ED9] hover:bg-[#1f8fc4] text-white rounded-[10px] text-xs font-sf-bold transition-all shadow-md active:scale-95"
-                        title="Copy /link command"
-                      >
-                        {copiedTelegramCode ? <Check size={14} /> : <Copy size={14} />}
-                        <span>{copiedTelegramCode ? 'Copied /link' : 'Copy /link'}</span>
-                      </button>
-
-                      {effectiveIsManager && (
-                        <button
-                          onClick={handleRegenerateTelegramCode}
-                          disabled={regeneratingTelegram}
-                          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-[#c8d4df] rounded-[10px] text-xs font-sf-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                          title="Revoke and generate a new connection code"
-                        >
-                          <RotateCcw size={14} className={regeneratingTelegram ? 'animate-spin' : ''} />
-                          <span className="hidden sm:inline">Regenerate</span>
-                        </button>
-                      )}
-
-                      <a
-                        href="https://t.me/Amibachelorbot"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3 py-2 bg-[#229ED9]/20 hover:bg-[#229ED9]/30 text-[#229ED9] border border-[#229ED9]/40 rounded-[10px] text-xs font-sf-bold transition-colors flex items-center gap-1"
-                      >
-                        Open Bot ↗
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Instructions */}
-                  <div className="mt-3 pt-3 border-t border-white/10 text-[11px] text-[#a4b5c4] space-y-1">
-                    <p className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9]"></span>
-                      Step 1: Open <a href="https://t.me/Amibachelorbot" target="_blank" rel="noreferrer" className="text-[#229ED9] font-sf-bold underline">@Amibachelorbot</a> on Telegram
-                    </p>
-                    <p className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9]"></span>
-                      Step 2: Type <code className="bg-black/40 px-1 py-0.5 rounded text-white font-mono">/link {currentMonthObj?.hostels?.telegram_link_code || 'TG-XXXXXX'}</code>
-                    </p>
-                    <p className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      Step 3: Text anytime, e.g. <span className="italic text-white/90">"5 traikh nur 1 meal, ajmain 2, tanvir 1, baki 0"</span>
-                    </p>
-                  </div>
-                </section>
-
                 {/* Workspace Switcher */}
                 {(managedHostels.length > 0 || joinedHostels.length > 0) && (
                   <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-3">
@@ -2041,6 +1947,172 @@ export default function App() {
             {/* View: Settings & History */}
             {activeView === 'settings' && (
               <div className="flex flex-col gap-[16px]">
+                {/* Workspace Invite Security Code Card */}
+                <section className="flex h-[180px] flex-col justify-between rounded-[24px] bg-[linear-gradient(113.5deg,#212121_0.77%,#000_100%)] px-[23px] py-[19px] text-[#e5e6e1] shadow-xl">
+                  <div>
+                    <span className="font-sf-regular text-[9px] text-[#8e8e8e] uppercase tracking-wider">
+                      Workspace Invite Security Code
+                    </span>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="font-sf-bold text-3xl text-white tracking-[0.2em]">
+                        {currentMonthObj?.hostels?.security_code || 'BACH26'}
+                      </span>
+                      <button
+                        onClick={handleCopyCode}
+                        className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-[10px] transition-colors"
+                        title="Copy Code"
+                      >
+                        {copiedCode ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                    <span className="font-sf-regular text-xs text-[#8e8e8e]">
+                      {roommates.length} Total Flatmates Joined
+                    </span>
+                    <span className="font-sf-bold text-sm text-red-500">
+                      {effectiveIsManager ? 'Manager Controls' : 'Directory'}
+                    </span>
+                  </div>
+                </section>
+
+                {/* Minimalist Telegram Bot Section */}
+                <div className="relative rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-[#229ED9]/15 border border-[#229ED9]/30 flex items-center justify-center text-[#229ED9]">
+                        <Bot size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-sf-bold text-[14px] text-[#141414] flex items-center gap-1.5">
+                          Telegram bot
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            currentMonthObj?.hostels?.bot_enabled
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                              : 'bg-slate-200 text-slate-600 border border-slate-300'
+                          }`}>
+                            {currentMonthObj?.hostels?.bot_enabled ? 'Active' : 'Locked'}
+                          </span>
+                        </h4>
+                      </div>
+                    </div>
+
+                    {/* (i) Info button for 3-step overlay */}
+                    <button
+                      type="button"
+                      onClick={() => setShowTelegramInfoOverlay(!showTelegramInfoOverlay)}
+                      className="w-7 h-7 rounded-full bg-white hover:bg-slate-100 border border-[#d6d6d6] text-[#626262] flex items-center justify-center transition-colors shadow-xs"
+                      title="Telegram bot info"
+                    >
+                      <Info size={15} />
+                    </button>
+                  </div>
+
+                  {/* If bot is disabled by Super Admin: Blurry disabled state + contact note */}
+                  {!currentMonthObj?.hostels?.bot_enabled ? (
+                    <div className="relative rounded-[16px] overflow-hidden p-4 bg-white/50 border border-dashed border-[#c4c4c4]">
+                      <div className="opacity-40 filter blur-[1px] pointer-events-none select-none flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-[#8e8e8e] block uppercase">Connect Code</span>
+                          <span className="font-mono text-base font-bold text-slate-600">TG-XXXXXX</span>
+                        </div>
+                        <button className="px-3 py-1.5 bg-[#229ED9] text-white rounded-lg text-xs font-bold">Copy /link</button>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-200 text-center">
+                        <p className="text-xs font-sf-bold text-slate-700">
+                          Contact <a href="https://t.me/nurhasan4421" target="_blank" rel="noreferrer" className="text-[#229ED9] underline">@nurhasan4421</a> to unlock bot
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Active Bot Controls */
+                    <div className="p-3 bg-white rounded-[16px] border border-[#d6d6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div>
+                        <span className="font-sf-regular text-[9px] text-[#626262] uppercase tracking-wider block">
+                          Bot Connect Code
+                        </span>
+                        <span className="font-sf-bold text-lg text-[#229ED9] tracking-[0.12em] font-mono">
+                          {currentMonthObj?.hostels?.telegram_link_code || 'TG-XXXXXX'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          onClick={handleCopyTelegramCode}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-[#229ED9] hover:bg-[#1f8fc4] text-white rounded-[10px] text-xs font-sf-bold transition-all shadow-sm active:scale-95"
+                          title="Copy /link command"
+                        >
+                          {copiedTelegramCode ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{copiedTelegramCode ? 'Copied /link' : 'Copy /link'}</span>
+                        </button>
+
+                        {effectiveIsManager && (
+                          <button
+                            onClick={handleRegenerateTelegramCode}
+                            disabled={regeneratingTelegram}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-[#444] rounded-[10px] text-xs font-sf-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                            title="Regenerate code"
+                          >
+                            <RotateCcw size={14} className={regeneratingTelegram ? 'animate-spin' : ''} />
+                            <span className="hidden sm:inline">Regenerate</span>
+                          </button>
+                        )}
+
+                        <a
+                          href="https://t.me/Amibachelorbot"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-2 bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] border border-[#229ED9]/30 rounded-[10px] text-xs font-sf-bold transition-colors flex items-center gap-1"
+                        >
+                          Open Bot ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mini Info Overlay Modal triggered by (i) button */}
+                  {showTelegramInfoOverlay && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xs"
+                        onClick={() => setShowTelegramInfoOverlay(false)}
+                      />
+                      <div className="absolute right-4 top-14 z-50 w-[290px] rounded-[18px] bg-white p-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 text-[#141414]">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
+                          <h5 className="font-sf-bold text-xs flex items-center gap-1.5">
+                            <Bot size={14} className="text-[#229ED9]" /> What Telegram Bot Does
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => setShowTelegramInfoOverlay(false)}
+                            className="text-slate-400 hover:text-slate-700"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="space-y-2 text-[11px] text-[#4a4a4a]">
+                          <p className="flex items-start gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9] mt-1 shrink-0"></span>
+                            <span><strong>1. Connect:</strong> Open <a href="https://t.me/Amibachelorbot" target="_blank" rel="noreferrer" className="text-[#229ED9] font-bold underline">@Amibachelorbot</a> and send <code>/link &lt;CODE&gt;</code></span>
+                          </p>
+                          <p className="flex items-start gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1 shrink-0"></span>
+                            <span><strong>2. Meals:</strong> Send e.g. <i>"5 traikh nur 1 meal, ajmain 2, baki 0"</i></span>
+                          </p>
+                          <p className="flex items-start gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 shrink-0"></span>
+                            <span><strong>3. Deposit / Bazar:</strong> Send multi-line items. The bot checks totals, verifies sums, and updates the sheet upon button click!</span>
+                          </p>
+                        </div>
+                        <p className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-500 text-center">
+                          Tap anywhere outside to close
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 {/* Account & Mode Control Card */}
                 <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-4">
                   <h3 className="font-sf-bold text-base text-[#141414]">Account & Mode Control</h3>
