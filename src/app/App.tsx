@@ -16,19 +16,20 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import SuperAdminPage from '@/components/SuperAdminPage';
 
-import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power } from 'lucide-react';
+import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power, Bot } from 'lucide-react';
 
 interface HostelData { 
   id: number; 
   name: string; 
   security_code: string; 
+  telegram_link_code?: string;
   role: 'manager' | 'member'; 
   latestMonthId: string;
   status?: 'active' | 'pending' | 'deactivated' | 'rejected';
   rejection_reason?: string;
   transaction_id?: string;
 }
-interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; status?: string; }; }
+interface MonthSheet { id: string; name: string; owner_id?: string; security_code?: string; hostel_id?: number; show_actions_to_members?: boolean; hostels?: { id: number; name: string; security_code: string; telegram_link_code?: string; status?: string; }; }
 interface Roommate { id: string; name: string; user_id: string | null; month_id: string; role?: string; email?: string; phone?: string; address?: string; joined_date?: string; }
 interface Expense { id: string; description: string; amount: number; category: string; paidBy: string; date: string; }
 interface DailyMeal { id?: string; date: string; meals: { [person: string]: number }; }
@@ -83,6 +84,8 @@ export default function App() {
   const [availability, setAvailability] = useState<MemberAvail[]>([]);
   const [showFlatmatesModal, setShowFlatmatesModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedTelegramCode, setCopiedTelegramCode] = useState(false);
+  const [regeneratingTelegram, setRegeneratingTelegram] = useState(false);
   const [viewMode, setViewMode] = useState<'manager' | 'member'>('manager');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -215,7 +218,7 @@ export default function App() {
     if (!session) return;
     const { data: managedRes } = await supabase
       .from('months')
-      .select('*, hostels(id, name, security_code, status, transaction_id, rejection_reason)')
+      .select('*, hostels(id, name, security_code, telegram_link_code, status, transaction_id, rejection_reason)')
       .eq('owner_id', session.user.id)
       .order('created_at', { ascending: false });
       
@@ -225,7 +228,7 @@ export default function App() {
       const monthIds = [...new Set(myRooms.map(r => r.month_id))];
       const { data } = await supabase
         .from('months')
-        .select('*, hostels(id, name, security_code, status, transaction_id, rejection_reason)')
+        .select('*, hostels(id, name, security_code, telegram_link_code, status, transaction_id, rejection_reason)')
         .in('id', monthIds)
         .order('created_at', { ascending: false });
       if (data) joinedRes = data;
@@ -517,6 +520,38 @@ export default function App() {
   const handleCopyCode = () => {
     const code = currentMonthObj?.hostels?.security_code || '';
     if (code) { navigator.clipboard.writeText(code); setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); showToast("Code Copied!"); }
+  };
+
+  const handleCopyTelegramCode = () => {
+    const code = currentMonthObj?.hostels?.telegram_link_code || '';
+    if (code) { navigator.clipboard.writeText(`/link ${code}`); setCopiedTelegramCode(true); setTimeout(() => setCopiedTelegramCode(false), 2000); showToast("Telegram command copied! Paste into bot"); }
+  };
+
+  const handleRegenerateTelegramCode = async () => {
+    const hostelId = currentMonthObj?.hostels?.id;
+    if (!hostelId) return;
+    setRegeneratingTelegram(true);
+    try {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let rand = '';
+      for (let i = 0; i < 6; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+      const newCode = `TG-${rand}`;
+
+      const { error } = await supabase
+        .from('hostels')
+        .update({ telegram_link_code: newCode })
+        .eq('id', hostelId);
+
+      if (error) throw error;
+
+      showToast("Telegram Connect Code regenerated!");
+      fetchMonthsAndHostels();
+    } catch (e: any) {
+      console.error(e);
+      showToast("Failed to regenerate code", "error");
+    } finally {
+      setRegeneratingTelegram(false);
+    }
   };
 
   const handleAddExpense = async (ed: Omit<Expense, 'id'>) => {
@@ -1851,6 +1886,88 @@ export default function App() {
                     <span className="font-sf-bold text-sm text-red-500">
                       {effectiveIsManager ? 'Manager Controls' : 'Directory'}
                     </span>
+                  </div>
+                </section>
+
+                {/* Telegram Bot Assistant Card (Directly Under Security Code) */}
+                <section className="flex flex-col justify-between rounded-[24px] bg-[linear-gradient(135deg,#0e1e2d_0%,#1c2833_100%)] p-[20px] text-white border border-[#2a3b4c] shadow-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-[12px] bg-[#229ED9]/20 border border-[#229ED9]/30 flex items-center justify-center text-[#229ED9]">
+                        <Bot size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-sf-bold text-[14px] text-white flex items-center gap-2">
+                          Telegram Meal & Deposit Bot
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#229ED9]/20 text-[#229ED9] border border-[#229ED9]/30">
+                            @Amibachelorbot
+                          </span>
+                        </h4>
+                        <p className="font-sf-regular text-[11px] text-[#9bb0c1] mt-0.5">
+                          Send daily meals in natural text & Banglish via Telegram
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Code & Quick Actions */}
+                  <div className="mt-4 p-3 rounded-[16px] bg-black/40 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                      <span className="font-sf-regular text-[9px] text-[#8e9ca8] uppercase tracking-wider block">
+                        Bot Connect Code
+                      </span>
+                      <span className="font-sf-bold text-xl text-[#229ED9] tracking-[0.15em] font-mono">
+                        {currentMonthObj?.hostels?.telegram_link_code || 'TG-LINK'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={handleCopyTelegramCode}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-[#229ED9] hover:bg-[#1f8fc4] text-white rounded-[10px] text-xs font-sf-bold transition-all shadow-md active:scale-95"
+                        title="Copy /link command"
+                      >
+                        {copiedTelegramCode ? <Check size={14} /> : <Copy size={14} />}
+                        <span>{copiedTelegramCode ? 'Copied /link' : 'Copy /link'}</span>
+                      </button>
+
+                      {effectiveIsManager && (
+                        <button
+                          onClick={handleRegenerateTelegramCode}
+                          disabled={regeneratingTelegram}
+                          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-[#c8d4df] rounded-[10px] text-xs font-sf-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                          title="Revoke and generate a new connection code"
+                        >
+                          <RotateCcw size={14} className={regeneratingTelegram ? 'animate-spin' : ''} />
+                          <span className="hidden sm:inline">Regenerate</span>
+                        </button>
+                      )}
+
+                      <a
+                        href="https://t.me/Amibachelorbot"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-2 bg-[#229ED9]/20 hover:bg-[#229ED9]/30 text-[#229ED9] border border-[#229ED9]/40 rounded-[10px] text-xs font-sf-bold transition-colors flex items-center gap-1"
+                      >
+                        Open Bot ↗
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="mt-3 pt-3 border-t border-white/10 text-[11px] text-[#a4b5c4] space-y-1">
+                    <p className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9]"></span>
+                      Step 1: Open <a href="https://t.me/Amibachelorbot" target="_blank" rel="noreferrer" className="text-[#229ED9] font-sf-bold underline">@Amibachelorbot</a> on Telegram
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9]"></span>
+                      Step 2: Type <code className="bg-black/40 px-1 py-0.5 rounded text-white font-mono">/link {currentMonthObj?.hostels?.telegram_link_code || 'TG-XXXXXX'}</code>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      Step 3: Text anytime, e.g. <span className="italic text-white/90">"5 traikh nur 1 meal, ajmain 2, tanvir 1, baki 0"</span>
+                    </p>
                   </div>
                 </section>
 
