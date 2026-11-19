@@ -332,17 +332,17 @@ export default function SuperAdminPage({
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-[#d6d6d6]/70 bg-[#f3f3f1]/90 backdrop-blur-md">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[1100px]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onExitSuperAdmin}
-              className="flex h-[36px] items-center gap-2 rounded-full border border-[#d6d6d6] bg-white px-3 font-sf-bold text-xs text-[#141414] hover:bg-slate-50 transition-all cursor-pointer active:scale-95 shadow-xs"
+              className="flex h-[36px] items-center gap-1.5 rounded-full border border-[#d6d6d6] bg-white px-3 font-sf-bold text-xs text-[#141414] hover:bg-slate-50 transition-all cursor-pointer active:scale-95 shadow-xs shrink-0"
             >
-              <ArrowLeft size={16} /> Exit to Hostel
+              <ArrowLeft size={16} /> <span className="hidden sm:inline">Exit to </span>Hostel
             </button>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse" />
-              <h1 className="font-sf-bold text-base md:text-lg tracking-tight text-[#141414]">
-                Platform Control & Super Admin
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-pulse shrink-0" />
+              <h1 className="font-sf-bold text-sm sm:text-base md:text-lg tracking-tight text-[#141414] truncate">
+                <span className="hidden sm:inline">Platform Control & </span>Super Admin
               </h1>
             </div>
           </div>

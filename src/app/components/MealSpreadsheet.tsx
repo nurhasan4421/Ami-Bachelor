@@ -165,7 +165,7 @@ export function MealSpreadsheet({
                               min="0"
                               value={count}
                               onChange={(e) => updateDraftMeal(date, r, e.target.value)}
-                              className="w-12 mx-auto p-1 text-center bg-white border border-[#d6d6d6] rounded-[6px] font-sf-bold text-xs focus:border-red-500 outline-none"
+                              className="w-12 mx-auto p-1 text-center bg-white border border-[#d6d6d6] rounded-[6px] font-sf-bold text-xs focus:border-red-500 focus:ring-1 focus:ring-red-400 outline-none"
                             />
                           ) : (
                             <span

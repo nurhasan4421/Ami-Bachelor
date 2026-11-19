@@ -450,7 +450,7 @@ export function DashboardHeader({
 
           {/* Dropdown Menu Modal / Sheet */}
           {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-[8px] w-[260px] rounded-[20px] border border-[#d6d6d6] bg-[#f3f3f1] p-[8px] shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 top-full mt-[8px] w-[260px] max-h-[calc(100dvh-80px)] overflow-y-auto card-rail rounded-[20px] border border-[#d6d6d6] bg-[#f3f3f1] p-[8px] shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="space-y-[4px]">
                 {[
                   { view: 'timeline' as DashboardView, label: 'Timeline Months', icon: <Calendar size={16} /> },
