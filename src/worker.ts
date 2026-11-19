@@ -7,9 +7,9 @@ interface Env {
   ASSETS?: { fetch: (request: Request) => Promise<Response> };
 }
 
-const BOT_TOKEN = '9015872115:AAGEvGkOXljmZipHED4slkoYzORxbXrC9lI';
-const SUPABASE_URL = 'https://krxvrfiflyryvjjlyore.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeHZyZmlmbHlyeXZqamx5b3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODI4NDUsImV4cCI6MjEwNzY1ODg0NX0.Z0OcRPcp9Gzw6_iSHBJpcHtNq6Z3kZbrHS1AHhvfC5s';
+let activeBotToken = '9015872115:AAGEvGkOXljmZipHED4slkoYzORxbXrC9lI';
+let activeSupabaseUrl = 'https://krxvrfiflyryvjjlyore.supabase.co';
+let activeSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeHZyZmlmbHlyeXZqamx5b3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODI4NDUsImV4cCI6MjEwNzY1ODg0NX0.Z0OcRPcp9Gzw6_iSHBJpcHtNq6Z3kZbrHS1AHhvfC5s';
 
 // Always-visible Reply Keyboard at the bottom of the chat
 const MAIN_REPLY_KEYBOARD = {
@@ -27,7 +27,7 @@ const MAIN_REPLY_KEYBOARD = {
 };
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  const url = `https://api.telegram.org/bot${activeBotToken}/sendMessage`;
   const body: any = {
     chat_id: chatId,
     text,
@@ -43,7 +43,7 @@ async function sendTelegramMessage(chatId: string | number, text: string, replyM
 }
 
 async function answerCallbackQuery(callbackQueryId: string, text?: string) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+  const url = `https://api.telegram.org/bot${activeBotToken}/answerCallbackQuery`;
   return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -55,7 +55,7 @@ async function answerCallbackQuery(callbackQueryId: string, text?: string) {
 }
 
 async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+  const url = `https://api.telegram.org/bot${activeBotToken}/editMessageText`;
   const body: any = {
     chat_id: chatId,
     message_id: messageId,
@@ -75,13 +75,14 @@ async function editTelegramMessage(chatId: string | number, messageId: number, t
 
 async function supabaseFetch(endpoint: string, options: RequestInit = {}) {
   const headers = {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'apikey': activeSupabaseAnonKey,
+    'Authorization': `Bearer ${activeSupabaseAnonKey}`,
     'Content-Type': 'application/json',
     'Prefer': 'return=representation',
+    'X-Bot-Secret': 'ami_bot_sec_9015872115_k9x2m4p8',
     ...(options.headers || {})
   };
-  return fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+  return fetch(`${activeSupabaseUrl}/rest/v1/${endpoint}`, {
     ...options,
     headers
   });
@@ -89,10 +90,22 @@ async function supabaseFetch(endpoint: string, options: RequestInit = {}) {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (env.TELEGRAM_BOT_TOKEN) activeBotToken = env.TELEGRAM_BOT_TOKEN;
+    if (env.VITE_SUPABASE_URL) activeSupabaseUrl = env.VITE_SUPABASE_URL;
+    if (env.VITE_SUPABASE_ANON_KEY) activeSupabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+
     const url = new URL(request.url);
 
     // Telegram Webhook Endpoint
     if (url.pathname === '/api/telegram-webhook' && request.method === 'POST') {
+      const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+      if (secret !== 'ami_tg_sec_89df2b4c10a9') {
+        return new Response(JSON.stringify({ error: 'Unauthorized webhook caller' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       try {
         const update: any = await request.json();
         await handleTelegramUpdate(update);
@@ -117,10 +130,26 @@ export default {
 
     // Static Assets fallback
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const res = await env.ASSETS.fetch(request);
+      const headers = new Headers(res.headers);
+      headers.set('X-Content-Type-Options', 'nosniff');
+      headers.set('X-Frame-Options', 'SAMEORIGIN');
+      headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      return new Response(res.body, {
+        status: res.status,
+        statusText: res.statusText,
+        headers
+      });
     }
 
-    return new Response('Ami Bachelor API running', { status: 200 });
+    return new Response('Ami Bachelor API running', {
+      status: 200,
+      headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
+      }
+    });
   }
 };
 

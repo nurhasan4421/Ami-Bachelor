@@ -106,11 +106,12 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
     if (!cleanCode || !cleanName) { setError("Please fill in both your name and the code."); return; }
     setLoading(true); setError(''); setJoinSuccessMsg('');
     try {
-      const { data: hostel, error: hError } = await supabase.from('hostels').select('id, name, owner_id').eq('security_code', cleanCode).maybeSingle();
-      if (hError || !hostel) throw new Error("Invalid security code. Please check and try again.");
+      const { data: lookupData, error: lookupErr } = await supabase.rpc('lookup_hostel_by_security_code', { p_code: cleanCode });
+      const hostel = lookupData && lookupData.length > 0 ? lookupData[0] : null;
+      if (lookupErr || !hostel) throw new Error("Invalid security code. Please check and try again.");
       if (hostel.owner_id === session.user.id) throw new Error("You are the Manager of this workspace! Please select it from 'Your Workspaces'.");
-      const { data: month, error: mError } = await supabase.from('months').select('id').eq('hostel_id', hostel.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (mError || !month) throw new Error("Workspace found, but no active months are available.");
+      const month = { id: hostel.latest_month_id };
+      if (!month.id) throw new Error("Workspace found, but no active months are available.");
 
       const { data: allMonths } = await supabase.from('months').select('id').eq('hostel_id', hostel.id);
       if (allMonths && allMonths.length > 0) {

@@ -295,9 +295,17 @@ export function parseBazarExpenseMessage(
       continue;
     }
 
+    // Strip date expressions from the line so day/month/year digits are not mistaken for expense amounts
+    // e.g. "18-Nov", "18/11", "2026-11-18", "5 tarikh"
+    const lineWithoutDates = line
+      .replace(/\b\d{1,2}[-\/](?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2})(?:[-\/]\d{2,4})?\b/gi, ' ')
+      .replace(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*\d{1,2}\b/gi, ' ')
+      .replace(/\b\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\b/g, ' ')
+      .replace(/\b\d{1,2}\s*(?:tarikh|traikh|tarik|th|st|nd|rd)\b/gi, ' ');
+
     // Try to find numbers in this line: e.g. "Begun 45", "Sosa:25", "Mach 1790"
     // Extract last number on the line as amount
-    const numMatches = [...line.matchAll(/\b(\d+(?:\.\d+)?)\b/g)];
+    const numMatches = [...lineWithoutDates.matchAll(/\b(\d+(?:\.\d+)?)\b/g)];
     if (numMatches.length > 0) {
       const lastMatch = numMatches[numMatches.length - 1];
       const amt = parseFloat(lastMatch[1]);
