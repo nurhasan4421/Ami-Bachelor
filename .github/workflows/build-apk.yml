@@ -32,9 +32,6 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Sync Capacitor Android
         run: npx cap sync android
 
@@ -44,7 +41,7 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK for Easy Download
         run: |
