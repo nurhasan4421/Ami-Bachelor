@@ -330,7 +330,7 @@ export default function SuperAdminPage({
   return (
     <div className="min-h-dvh bg-[#f3f3f1] text-[#141414] pb-16">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-[#d6d6d6]/70 bg-[#f3f3f1]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[#d6d6d6] bg-[#f3f3f1]">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[1100px]">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button

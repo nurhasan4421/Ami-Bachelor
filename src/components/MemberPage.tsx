@@ -545,6 +545,37 @@ export default function MemberPage({
                     </button>
                   </div>
 
+                  {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+                    <div className="mt-2.5 flex items-center justify-between rounded-[12px] bg-blue-50 border border-blue-200/80 p-2.5 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Bell size={13} className="text-blue-600 shrink-0" />
+                        <span className="text-[11px] font-sf-medium text-blue-900 leading-tight">
+                          Receive alerts on your phone status bar
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const perm = await Notification.requestPermission();
+                            if (perm === 'granted' && 'serviceWorker' in navigator) {
+                              const reg = await navigator.serviceWorker.ready;
+                              if (reg && reg.showNotification) {
+                                reg.showNotification('Ami Bachelor Alerts Active', {
+                                  body: 'You will receive hostel updates on your notification bar.',
+                                  icon: '/pwa-192x192.png'
+                                });
+                              }
+                            }
+                          } catch {}
+                        }}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-sf-bold text-[10px] shrink-0 transition-colors shadow-xs cursor-pointer"
+                      >
+                        Enable
+                      </button>
+                    </div>
+                  )}
+
                   {/* Notifications List: Directly inside overlay card */}
                   <div className="mt-2.5 flex-1 overflow-y-auto divide-y divide-[#e5e6e1] overscroll-contain pr-1 -mr-1">
                     {messNotifications.map((notif) => {

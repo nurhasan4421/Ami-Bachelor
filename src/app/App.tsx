@@ -15,6 +15,7 @@ import AdminPage from '@/components/AdminPage';
 import { DashboardHeader, type DashboardView } from '@/components/DashboardShared';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import SuperAdminPage from '@/components/SuperAdminPage';
+import { showPhonePushNotification } from '@/lib/pushNotifications';
 
 import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power, Bot, Info } from 'lucide-react';
 
@@ -340,6 +341,52 @@ export default function App() {
 
   useEffect(() => { fetchSheetData(); }, [fetchSheetData]);
 
+  // Realtime Push & System Notifications when manager broadcasts
+  useEffect(() => {
+    if (!session || !activeMonthId) return;
+
+    // Fetch initial latest notice from notifications table if available
+    supabase
+      .from('notifications')
+      .select('message')
+      .eq('month_id', activeMonthId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data[0]?.message) {
+          setBroadcastNotice(data[0].message);
+        }
+      });
+
+    const channel = supabase
+      .channel(`notifications-month-${activeMonthId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `month_id=eq.${activeMonthId}`
+        },
+        (payload: any) => {
+          const newNoti = payload.new;
+          if (!newNoti) return;
+
+          // Check if it's meant for everyone or specifically for current user
+          if (!newNoti.target_member_id || newNoti.target_member_id === session?.user?.id) {
+            setBroadcastNotice(newNoti.message);
+            showToast(`New Announcement: ${newNoti.message}`);
+            showPhonePushNotification('Ami Bachelor - Notice', newNoti.message);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, activeMonthId]);
+
   const handleAddBazarItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBazarItem.trim() || !activeMonthId) return;
@@ -637,13 +684,25 @@ export default function App() {
     return localStorage.getItem('ami_hostel_notice') || '';
   });
 
-  const handleSendNotice = (text: string) => {
+  const handleSendNotice = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     setBroadcastNotice(trimmed);
     localStorage.setItem('ami_hostel_notice', trimmed);
     logAction(`Notice sent: ${trimmed}`);
     showToast(`Notification sent to flatmates!`);
+
+    if (activeMonthId) {
+      try {
+        await supabase.from('notifications').insert([{
+          month_id: activeMonthId,
+          message: trimmed,
+          target_member_id: null,
+        }]);
+      } catch (err) {
+        console.error('Failed to sync notification to database:', err);
+      }
+    }
   };
 
   const handleAddDeposit = async (person: string, amount: number, date: string) => {
@@ -662,7 +721,7 @@ export default function App() {
   };
 
   const handleExportMonthPDF = () => {
-    const html = `<!DOCTYPE html><html><head><title>Month Report - ${currentMonthObj?.name}</title><style>body { font-family: -apple-system, sans-serif; padding: 40px; color: #1e293b; } table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; font-size: 14px; } th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; } th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 12px; color: #64748b; } h1, h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; } .text-right { text-align: right; } .font-mono { font-family: monospace; font-size: 16px; font-weight: bold; } .credit { color: #16a34a; } .due { color: #dc2626; }</style></head><body><div style="text-align: center; margin-bottom: 40px;"><img src="${window.location.origin}/logo.png" style="height: 60px; object-fit: contain; margin-bottom: 10px;" /><h1 style="margin:0; border:none;">Workspace Report: ${currentMonthObj?.hostels?.name}</h1><p style="color: #64748b; margin-top: 5px;">${currentMonthObj?.name} • Generated ${new Date().toLocaleDateString()}</p></div><h2>1. Members Account Summary</h2><table><tr><th>Name</th><th class="text-right">Total Bill</th><th class="text-right">Total Paid</th><th class="text-right">Net Balance</th></tr>${calculations.indAccounts.map(a => { const totalBill = Object.values(a.expenses).reduce((sum, val) => sum + val, 0) + a.manualAdjustment; const bal = totalBill - a.paid; return `<tr><td><b>${a.name}</b></td><td class="text-right font-mono">৳${totalBill.toFixed(2)}</td><td class="text-right font-mono">৳${a.paid.toFixed(2)}</td><td class="text-right font-mono ${bal > 0 ? 'due' : 'credit'}">${bal > 0 ? 'DUE ৳'+bal.toFixed(2) : 'CR ৳'+Math.abs(bal).toFixed(2)}</td></tr>`; }).join('')}</table><h2>2. Fixed Costs</h2><table><tr><th>Category</th><th class="text-right">Total Amount</th><th class="text-right">Per Person (${roommates.length})</th></tr>${fixedCosts.map(f => `<tr><td>${f.category}</td><td class="text-right font-mono">৳${f.amount.toFixed(2)}</td><td class="text-right font-mono">৳${(f.amount/roommates.length).toFixed(2)}</td></tr>`).join('')}</table><h2>3. Expense History</h2><table><tr><th>Date</th><th>Description</th><th>Category</th><th>Paid By</th><th class="text-right">Amount</th></tr>${expenses.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.description}</td><td>${e.category}</td><td>${e.paidBy}</td><td class="text-right font-mono">৳${e.amount.toFixed(2)}</td></tr>`).join('')}</table><h2>4. Member Meal Count</h2><table><tr><th>Name</th><th class="text-right">Total Meals Consumed</th></tr>${calculations.mealStats.map(s => `<tr><td>${s.person}</td><td class="text-right font-mono">${s.meals}</td></tr>`).join('')}</table></body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" /><title>Month Report - ${currentMonthObj?.name}</title><style>@media print { .no-print { display: none !important; } body { padding: 0 !important; } } body { font-family: -apple-system, sans-serif; padding: 20px 40px; color: #1e293b; background: #fff; } .toolbar { position: sticky; top: 0; left: 0; right: 0; background: #141414; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 99999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); border-radius: 12px; margin-bottom: 24px; } .btn-back { background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .btn-save { background: #ff0000; color: #fff; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; font-size: 14px; } th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; } th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 12px; color: #64748b; } h1, h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; } .text-right { text-align: right; } .font-mono { font-family: monospace; font-size: 16px; font-weight: bold; } .credit { color: #16a34a; } .due { color: #dc2626; }</style></head><body><div class="no-print toolbar"><button onclick="try{if(window.opener){window.close();}else if(window.history.length>1){window.history.back();}else{window.location.href='/';}}catch(e){window.location.href='/';}" class="btn-back">← Back to App</button><button onclick="window.print()" class="btn-save">📥 Save / Download PDF</button></div><div style="text-align: center; margin-bottom: 40px;"><img src="${window.location.origin}/logo.png" style="height: 60px; object-fit: contain; margin-bottom: 10px;" /><h1 style="margin:0; border:none;">Workspace Report: ${currentMonthObj?.hostels?.name}</h1><p style="color: #64748b; margin-top: 5px;">${currentMonthObj?.name} • Generated ${new Date().toLocaleDateString()}</p></div><h2>1. Members Account Summary</h2><table><tr><th>Name</th><th class="text-right">Total Bill</th><th class="text-right">Total Paid</th><th class="text-right">Net Balance</th></tr>${calculations.indAccounts.map(a => { const totalBill = Object.values(a.expenses).reduce((sum, val) => sum + val, 0) + a.manualAdjustment; const bal = totalBill - a.paid; return `<tr><td><b>${a.name}</b></td><td class="text-right font-mono">৳${totalBill.toFixed(2)}</td><td class="text-right font-mono">৳${a.paid.toFixed(2)}</td><td class="text-right font-mono ${bal > 0 ? 'due' : 'credit'}">${bal > 0 ? 'DUE ৳'+bal.toFixed(2) : 'CR ৳'+Math.abs(bal).toFixed(2)}</td></tr>`; }).join('')}</table><h2>2. Fixed Costs</h2><table><tr><th>Category</th><th class="text-right">Total Amount</th><th class="text-right">Per Person (${roommates.length})</th></tr>${fixedCosts.map(f => `<tr><td>${f.category}</td><td class="text-right font-mono">৳${f.amount.toFixed(2)}</td><td class="text-right font-mono">৳${(f.amount/roommates.length).toFixed(2)}</td></tr>`).join('')}</table><h2>3. Expense History</h2><table><tr><th>Date</th><th>Description</th><th>Category</th><th>Paid By</th><th class="text-right">Amount</th></tr>${expenses.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.description}</td><td>${e.category}</td><td>${e.paidBy}</td><td class="text-right font-mono">৳${e.amount.toFixed(2)}</td></tr>`).join('')}</table><h2>4. Member Meal Count</h2><table><tr><th>Name</th><th class="text-right">Total Meals Consumed</th></tr>${calculations.mealStats.map(s => `<tr><td>${s.person}</td><td class="text-right font-mono">${s.meals}</td></tr>`).join('')}</table></body></html>`;
     const printWindow = window.open('', '_blank');
     if(printWindow) { printWindow.document.write(html); printWindow.document.close(); setTimeout(() => printWindow.print(), 800); }
   };
@@ -849,7 +908,7 @@ export default function App() {
     <div class="status-badge ${totalDue > 0 ? 'status-due' : totalDue < 0 ? 'status-credit' : 'status-settled'}">${totalDue > 0 ? 'PAYMENT DUE' : totalDue < 0 ? 'ACCOUNT IN CREDIT' : 'ACCOUNT SETTLED'}</div>
   </div>`;
 }).join('');
-    const fullHTML = `<!DOCTYPE html><html><head><title>All Member Accounts</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet"><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 20px; color: #0f172a; } .bengali-font { font-family: 'Noto Sans Bengali', sans-serif; } .receipt { width: 100%; max-width: 400px; margin: 0 auto 40px auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 16px; } .header { text-align: center; border-bottom: 2px dashed #e2e8f0; padding-bottom: 24px; margin-bottom: 24px; } .hostel-name { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; margin: 0 0 8px 0; } .meta { font-size: 12px; color: #64748b; margin: 0; text-transform: uppercase; letter-spacing: 1px; } .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; } .row .label { color: #475569; } .row .value { font-family: monospace; font-size: 15px; font-weight: 600; } .divider { border-top: 1px solid #e2e8f0; margin: 16px 0; } .total-row { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 18px; margin-top: 24px; } .status-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 800; text-align: center; margin-top: 24px; width: calc(100% - 24px); } .status-due { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; } .status-credit { background: #f0fdf4; color: #22c55e; border: 1px solid #bbf7d0; } .status-settled { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; } @media print { body { padding: 0; } .receipt { border: none; padding: 20px; margin: 0 auto; box-shadow: none; max-width: 100%; } }</style></head><body>${allReceiptsHTML}</body></html>`;
+    const fullHTML = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" /><title>All Member Accounts</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet"><style>@media print { .no-print { display: none !important; } body { padding: 0 !important; } .receipt { border: none !important; padding: 20px !important; margin: 0 auto !important; box-shadow: none !important; max-width: 100% !important; } } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 20px; color: #0f172a; } .toolbar { position: sticky; top: 0; left: 0; right: 0; background: #141414; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 99999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); border-radius: 12px; margin-bottom: 24px; } .btn-back { background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .btn-save { background: #ff0000; color: #fff; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .bengali-font { font-family: 'Noto Sans Bengali', sans-serif; } .receipt { width: 100%; max-width: 400px; margin: 0 auto 40px auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 16px; } .header { text-align: center; border-bottom: 2px dashed #e2e8f0; padding-bottom: 24px; margin-bottom: 24px; } .hostel-name { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; margin: 0 0 8px 0; } .meta { font-size: 12px; color: #64748b; margin: 0; text-transform: uppercase; letter-spacing: 1px; } .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; } .row .label { color: #475569; } .row .value { font-family: monospace; font-size: 15px; font-weight: 600; } .divider { border-top: 1px solid #e2e8f0; margin: 16px 0; } .total-row { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 18px; margin-top: 24px; } .status-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 800; text-align: center; margin-top: 24px; width: calc(100% - 24px); } .status-due { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; } .status-credit { background: #f0fdf4; color: #22c55e; border: 1px solid #bbf7d0; } .status-settled { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }</style></head><body><div class="no-print toolbar"><button onclick="try{if(window.opener){window.close();}else if(window.history.length>1){window.history.back();}else{window.location.href='/';}}catch(e){window.location.href='/';}" class="btn-back">← Back to App</button><button onclick="window.print()" class="btn-save">📥 Save / Download PDF</button></div>${allReceiptsHTML}</body></html>`;
     const printWindow = window.open('', '_blank');
     if (printWindow) { printWindow.document.write(fullHTML); printWindow.document.close(); setTimeout(() => { printWindow.print(); }, 800); }
   };

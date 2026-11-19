@@ -360,7 +360,7 @@ export function DashboardHeader({
   };
 
   return (
-    <header className="sticky top-0 z-50 mb-[16px] border-b border-[#d6d6d6]/70 bg-[#f3f3f1]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 mb-[16px] border-b border-[#d6d6d6] bg-[#f3f3f1]">
       <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[900px]">
         {/* Brand / Logo */}
         <div
@@ -373,25 +373,29 @@ export function DashboardHeader({
 
         {/* Action Controls & Dropdown Menu */}
         <div ref={menuRef} className="relative flex items-center gap-[8px] sm:gap-[10px]">
-          {/* Admin / Member Role Switch Pill */}
+          {/* Admin / Member Role Switch Mini Icon */}
           <button
             type="button"
             onClick={onToggleRole}
-            className="flex h-[34px] items-center gap-[6px] rounded-[30px] border border-[#d6d6d6] bg-[#e5e6e1] px-[12px] font-sf-medium text-[11px] text-[#141414] transition-transform active:scale-95 shadow-sm"
-            title="Switch between Admin and Member mode"
+            className={`relative flex h-[34px] w-[34px] items-center justify-center rounded-xl border transition-all active:scale-95 cursor-pointer shadow-xs ${
+              current === 'admin'
+                ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100/70'
+                : 'bg-white border-[#d6d6d6] text-[#626262] hover:text-[#141414] hover:bg-slate-50'
+            }`}
+            title={current === 'admin' ? "Admin Mode Active (Tap to preview as Member)" : "Member Mode Active (Tap to switch to Admin)"}
+            aria-label="Toggle Admin/Member mode"
           >
             {current === 'admin' ? (
               <>
-                <span className="h-2 w-2 rounded-full bg-red-600" />
-                <span className="font-sf-bold text-red-600">Admin</span>
+                <ShieldCheck size={18} className="text-red-600" />
+                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600 ring-1 ring-white" />
               </>
             ) : (
               <>
-                <span className="h-2 w-2 rounded-full bg-slate-400" />
-                <span>Member</span>
+                <Eye size={17} className="text-[#626262]" />
+                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-slate-400 ring-1 ring-white" />
               </>
             )}
-            <Eye size={12} className="text-[#626262] ml-1" />
           </button>
 
           {/* Notification Icon (on the left side of hamburger) */}
@@ -593,6 +597,37 @@ export function DashboardHeader({
                       <X size={16} />
                     </button>
                   </div>
+
+                  {typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted' && (
+                    <div className="mt-2.5 flex items-center justify-between rounded-[12px] bg-blue-50 border border-blue-200/80 p-2.5 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Bell size={13} className="text-blue-600 shrink-0" />
+                        <span className="text-[11px] font-sf-medium text-blue-900 leading-tight">
+                          Receive alerts on your phone status bar
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const perm = await Notification.requestPermission();
+                            if (perm === 'granted' && 'serviceWorker' in navigator) {
+                              const reg = await navigator.serviceWorker.ready;
+                              if (reg && reg.showNotification) {
+                                reg.showNotification('Ami Bachelor Alerts Active', {
+                                  body: 'You will receive hostel updates on your notification bar.',
+                                  icon: '/pwa-192x192.png'
+                                });
+                              }
+                            }
+                          } catch {}
+                        }}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-sf-bold text-[10px] shrink-0 transition-colors shadow-xs cursor-pointer"
+                      >
+                        Enable
+                      </button>
+                    </div>
+                  )}
 
                   {/* Manager Broadcast Notice Input Form */}
                   <form
