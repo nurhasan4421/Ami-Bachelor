@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ami Bachelor</string>
+    <string name="title_activity_main">Ami Bachelor</string>
+    <string name="package_name">com.amibachelor.app</string>
+    <string name="custom_url_scheme">com.amibachelor.app</string>
+</resources>

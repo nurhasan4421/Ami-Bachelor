@@ -4,6 +4,7 @@ export interface ParsedMealEntry {
   displayDate: string; // "Sunday, November 5, 2026"
   meals: Record<string, number>;
   totalMeals: number;
+  hasExplicitDate: boolean;
 }
 
 export interface ParsedExpenseEntry {
@@ -17,6 +18,7 @@ export interface ParsedExpenseEntry {
   description: string;
   isAmountMismatch: boolean;
   statedAmount: number;
+  hasExplicitDate: boolean;
 }
 
 export type ParsedTelegramEntry = ParsedMealEntry | ParsedExpenseEntry;
@@ -44,7 +46,7 @@ export function formatDateISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function extractDateFromText(text: string, referenceDate: Date = new Date()): { date: Date; textWithoutDate: string } {
+export function extractDateFromText(text: string, referenceDate: Date = new Date()): { date: Date; textWithoutDate: string; hasExplicitDate: boolean } {
   const normalized = normalizeText(text);
   const now = new Date(referenceDate);
 
@@ -53,13 +55,13 @@ export function extractDateFromText(text: string, referenceDate: Date = new Date
     const yDay = new Date(now);
     yDay.setDate(yDay.getDate() - 1);
     const cleaned = normalized.replace(/\b(yesterday|kal|kalke|kaler|gothokal|goto\s*kal)\b/gi, ' ');
-    return { date: yDay, textWithoutDate: cleaned };
+    return { date: yDay, textWithoutDate: cleaned, hasExplicitDate: true };
   }
 
   // Check today
   if (/\b(today|aj|ajke|ajker)\b/i.test(normalized)) {
     const cleaned = normalized.replace(/\b(today|aj|ajke|ajker)\b/gi, ' ');
-    return { date: now, textWithoutDate: cleaned };
+    return { date: now, textWithoutDate: cleaned, hasExplicitDate: true };
   }
 
   // Check explicit ISO YYYY-MM-DD
@@ -67,7 +69,7 @@ export function extractDateFromText(text: string, referenceDate: Date = new Date
   if (isoMatch) {
     const parsed = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
     const cleaned = normalized.replace(isoMatch[0], ' ');
-    return { date: parsed, textWithoutDate: cleaned };
+    return { date: parsed, textWithoutDate: cleaned, hasExplicitDate: true };
   }
 
   // Check day of month: "meal 5", "5 tarikh", "5 traikh", "5th", "tarikh 5", "date 5"
@@ -84,12 +86,13 @@ export function extractDateFromText(text: string, referenceDate: Date = new Date
       if (dayNum >= 1 && dayNum <= 31) {
         const target = new Date(now.getFullYear(), now.getMonth(), dayNum);
         const cleaned = normalized.replace(match[0], ' ');
-        return { date: target, textWithoutDate: cleaned };
+        return { date: target, textWithoutDate: cleaned, hasExplicitDate: true };
       }
     }
   }
 
-  return { date: now, textWithoutDate: normalized };
+  // No explicit date detected; defaults to current date (today)
+  return { date: now, textWithoutDate: normalized, hasExplicitDate: false };
 }
 
 export function matchRoommateName(rawToken: string, registeredNames: string[]): string | null {
@@ -125,7 +128,7 @@ export function parseMealMessage(
   knownRoommates: string[],
   referenceDate: Date = new Date()
 ): ParsedMealEntry | null {
-  const { date, textWithoutDate } = extractDateFromText(rawText, referenceDate);
+  const { date, textWithoutDate, hasExplicitDate } = extractDateFromText(rawText, referenceDate);
 
   let cleaned = textWithoutDate
     .replace(/\b(meal|meals|mil|er|khabar|kheyeche|khelo)\b/gi, ' ')
@@ -200,7 +203,8 @@ export function parseMealMessage(
     dateStr: formatDateISO(date),
     displayDate: formatDisplayDate(date),
     meals: mealMap,
-    totalMeals
+    totalMeals,
+    hasExplicitDate
   };
 }
 
@@ -229,7 +233,7 @@ export function parseBazarExpenseMessage(
   const lines = normText.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
 
-  const { date } = extractDateFromText(normText, referenceDate);
+  const { date, hasExplicitDate } = extractDateFromText(normText, referenceDate);
 
   // 1. Detect Payer (e.g. from first line "ajmain - Sim 70" or "nur 1500" or anywhere)
   let detectedPayer: string | null = null;
@@ -322,6 +326,7 @@ export function parseBazarExpenseMessage(
     calculatedAmount: calculatedSum,
     statedAmount: statedTotal !== null ? statedTotal : calculatedSum,
     isAmountMismatch,
-    description
+    description,
+    hasExplicitDate
   };
 }

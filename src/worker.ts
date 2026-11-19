@@ -11,16 +11,29 @@ const BOT_TOKEN = '9015872115:AAGEvGkOXljmZipHED4slkoYzORxbXrC9lI';
 const SUPABASE_URL = 'https://krxvrfiflyryvjjlyore.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeHZyZmlmbHlyeXZqamx5b3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODI4NDUsImV4cCI6MjEwNzY1ODg0NX0.Z0OcRPcp9Gzw6_iSHBJpcHtNq6Z3kZbrHS1AHhvfC5s';
 
+// Always-visible Reply Keyboard at the bottom of the chat
+const MAIN_REPLY_KEYBOARD = {
+  keyboard: [
+    [
+      { text: '🍽️ Record Meals' },
+      { text: '💰 Deposit / Expense' }
+    ],
+    [
+      { text: '🔄 Restart' }
+    ]
+  ],
+  resize_keyboard: true,
+  is_persistent: true
+};
+
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
   const body: any = {
     chat_id: chatId,
     text,
     parse_mode: 'HTML',
+    reply_markup: replyMarkup || MAIN_REPLY_KEYBOARD
   };
-  if (replyMarkup) {
-    body.reply_markup = replyMarkup;
-  }
 
   return fetch(url, {
     method: 'POST',
@@ -146,8 +159,17 @@ async function handleCallbackQuery(cb: any) {
   // Ready Button: Mode Selection (Meal or Deposit)
   if (data === 'mode:meal') {
     await answerCallbackQuery(callbackId, 'Meal update mode selected');
-    // Clear any deposit session
-    await supabaseFetch(`telegram_user_sessions?chat_id=eq.${chatId}`, { method: 'DELETE' });
+    // Set session state explicitly to awaiting_meal_text
+    await supabaseFetch('telegram_user_sessions', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        state: 'awaiting_meal_text',
+        category: null,
+        updated_at: new Date().toISOString()
+      })
+    });
     const text = `🍽️ <b>Meal Update Mode Active</b>\n\nPlease send your meal update text, for example:\n• <code>meal 5- nur 1, ajmain 1, tanvir 2</code>\n• <code>5 traikh nur 1 meal,ajmain 2 ,tanvir 1 meal,baki sobai 0</code>\n• <code>ajker meal nur 2, tanvir 1</code>`;
     await editTelegramMessage(chatId, messageId, text);
     return;
@@ -241,6 +263,7 @@ async function handleCallbackQuery(cb: any) {
 
         let finalMeals = { ...meals };
         if (existingMeals && existingMeals.length > 0) {
+          // Replace with the newly confirmed input (or update keys)
           finalMeals = { ...(existingMeals[0].meals || {}), ...meals };
           await supabaseFetch(`daily_meals?id=eq.${existingMeals[0].id}`, {
             method: 'PATCH',
@@ -258,12 +281,17 @@ async function handleCallbackQuery(cb: any) {
         }
 
         await supabaseFetch(`pending_bot_actions?id=eq.${actionId}`, { method: 'DELETE' });
+        await supabaseFetch(`telegram_user_sessions?chat_id=eq.${chatId}`, { method: 'DELETE' });
 
         const mealLines = Object.entries(finalMeals)
           .map(([name, count]) => `• <b>${name}</b>: ${count} meal(s)`)
           .join('\n');
 
-        const confirmedText = `✅ <b>Meals Saved Successfully!</b>\n\n📅 <b>${dateStr}</b>\n${mealLines}\n\n<i>Updated on Ami Bachelor.</i>`;
+        const isUpdatedNotice = existingMeals && existingMeals.length > 0
+          ? `\n<i>(Updated previous entry for this date)</i>\n`
+          : '';
+
+        const confirmedText = `✅ <b>Meals Saved Successfully!</b>\n\n📅 <b>${dateStr}</b>${isUpdatedNotice}\n${mealLines}\n\n<i>Updated on Ami Bachelor.</i>`;
         await editTelegramMessage(chatId, messageId, confirmedText);
         return;
       }
@@ -321,29 +349,62 @@ async function handleMessage(msg: any) {
 
   if (!chatId || !text) return;
 
-  // 1. Command /start or /menu
-  if (text.startsWith('/start') || text.startsWith('/menu')) {
-    const welcome = `👋 <b>Welcome to Ami Bachelor Bot!</b>\n\nChoose an option below to get started:`;
-    const markup = {
-      inline_keyboard: [
-        [
-          { text: '🍽️ Record Meals', callback_data: 'mode:meal' },
-          { text: '💰 Deposit / Expense', callback_data: 'mode:deposit' }
-        ]
-      ]
-    };
-    await sendTelegramMessage(chatId, welcome, markup);
+  // 0. Restart / Refresh Command or Bottom Button
+  if (
+    text.startsWith('/restart') ||
+    text.startsWith('/refresh') ||
+    text.startsWith('/reset') ||
+    text === '🔄 Restart' ||
+    text === 'Restart'
+  ) {
+    await supabaseFetch(`telegram_user_sessions?chat_id=eq.${chatId}`, { method: 'DELETE' });
+    const restartMsg = `🔄 <b>Bot Refreshed & Ready!</b>\n\nAll pending modes and sessions have been cleared.\nChoose an option below or send your update directly:`;
+    await sendTelegramMessage(chatId, restartMsg, MAIN_REPLY_KEYBOARD);
     return;
   }
 
-  // 2. Command /link <CODE>
-  if (text.startsWith('/link')) {
-    const parts = text.split(/\s+/);
-    if (parts.length < 2) {
-      await sendTelegramMessage(chatId, '⚠️ Please provide your Telegram Link Code.\nExample: <code>/link TG-XXXXXX</code>');
-      return;
+  // 0.1 Bot Reset Command: Disconnect current connected hostel
+  if (text.startsWith('/botreset') || text.startsWith('/disconnect') || text.startsWith('/unlink')) {
+    await supabaseFetch(`telegram_connections?chat_id=eq.${chatId}`, { method: 'DELETE' });
+    await supabaseFetch(`telegram_user_sessions?chat_id=eq.${chatId}`, { method: 'DELETE' });
+    await sendTelegramMessage(
+      chatId,
+      `🔌 <b>Hostel Disconnected Successfully!</b>\n\nThis Telegram chat has been unlinked from your hostel.\n\nTo connect to a hostel again, get your Telegram Link Code from the app and send:\n<code>/link TG-XXXXXX</code>`,
+      MAIN_REPLY_KEYBOARD
+    );
+    return;
+  }
+
+  // 1. Command /start or /menu
+  if (text.startsWith('/start') || text.startsWith('/menu')) {
+    const welcome = `👋 <b>Welcome to Ami Bachelor Bot!</b>\n\nUse the buttons below to record meals or expenses:`;
+    await sendTelegramMessage(chatId, welcome, MAIN_REPLY_KEYBOARD);
+    return;
+  }
+
+  // 2. Command /link <CODE>, /link@bot <CODE>, or direct code entry like TG-XXXXXX / XXXXXX
+  const cleanText = text.trim();
+  const directMatch = cleanText.match(/\b(TG-[A-Z0-9]{6})\b/i) || cleanText.match(/^([A-Z0-9]{6})$/i);
+  const isLinkCommand = /^\/link(@[a-zA-Z0-9_]+)?\b/i.test(cleanText);
+
+  if (isLinkCommand || directMatch) {
+    let rawCode = '';
+    if (isLinkCommand) {
+      const parts = cleanText.split(/\s+/);
+      if (parts.length < 2) {
+        await sendTelegramMessage(chatId, '⚠️ Please provide your Telegram Link Code.\nExample: <code>/link TG-XXXXXX</code>');
+        return;
+      }
+      rawCode = parts[1].trim();
+    } else if (directMatch) {
+      rawCode = directMatch[1];
     }
-    const code = parts[1].trim().toUpperCase();
+
+    let code = rawCode.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    // Auto prepend 'TG-' if user omitted it
+    if (!code.startsWith('TG-') && code.length === 6) {
+      code = `TG-${code}`;
+    }
 
     const hostelRes = await supabaseFetch(`hostels?telegram_link_code=eq.${code}`);
     const hostels: any[] = await hostelRes.json();
@@ -364,9 +425,10 @@ async function handleMessage(msg: any) {
       return;
     }
 
+    // Save or update connection
+    await supabaseFetch(`telegram_connections?chat_id=eq.${chatId}`, { method: 'DELETE' });
     await supabaseFetch('telegram_connections', {
       method: 'POST',
-      headers: { 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({
         hostel_id: hostel.id,
         chat_id: String(chatId),
@@ -375,19 +437,10 @@ async function handleMessage(msg: any) {
       })
     });
 
-    const readyMarkup = {
-      inline_keyboard: [
-        [
-          { text: '🍽️ Record Meals', callback_data: 'mode:meal' },
-          { text: '💰 Deposit / Expense', callback_data: 'mode:deposit' }
-        ]
-      ]
-    };
-
     await sendTelegramMessage(
       chatId,
-      `🎉 <b>Successfully Connected!</b>\n\n🏢 <b>Hostel:</b> ${hostel.name}\n\nTap a button below or send your update message directly:`,
-      readyMarkup
+      `🎉 <b>Successfully Connected!</b>\n\n🏢 <b>Hostel:</b> ${hostel.name}\n\nUse the buttons below to record daily meals or expenses anytime:`,
+      MAIN_REPLY_KEYBOARD
     );
     return;
   }
@@ -406,10 +459,20 @@ async function handleMessage(msg: any) {
 
   const hostelId = conns[0].hostel_id;
 
-  // Check if hostel bot is enabled
+  // Check if hostel exists and bot is enabled
   const hostelRes = await supabaseFetch(`hostels?id=eq.${hostelId}`);
   const hostels: any[] = await hostelRes.json();
-  if (hostels && hostels[0]?.bot_enabled === false) {
+  if (!hostels || hostels.length === 0) {
+    // Stale connection (hostel deleted or not found)
+    await supabaseFetch(`telegram_connections?chat_id=eq.${chatId}`, { method: 'DELETE' });
+    await sendTelegramMessage(
+      chatId,
+      `⚠️ <b>Connection Expired:</b> This hostel connection is no longer valid. Please reconnect using <code>/link YOUR-CODE</code>.`
+    );
+    return;
+  }
+
+  if (hostels[0]?.bot_enabled === false) {
     await sendTelegramMessage(
       chatId,
       `⚠️ <b>Telegram Bot is Disabled:</b>\nThis hostel's bot feature has been turned off by Super Admin.\n\nPlease contact <b>@nurhasan4421</b> to unlock.`
@@ -438,17 +501,53 @@ async function handleMessage(msg: any) {
     return;
   }
 
-  // 4. Check active user session (e.g. user selected a deposit category)
+  // 4. Handle bottom keyboard button taps: "🍽️ Record Meals" or "💰 Deposit / Expense"
+  if (text === '🍽️ Record Meals' || text.startsWith('/meal')) {
+    // Set active session for meal text
+    await supabaseFetch('telegram_user_sessions', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        state: 'awaiting_meal_text',
+        category: null,
+        updated_at: new Date().toISOString()
+      })
+    });
+    const promptMeal = `🍽️ <b>Meal Update Mode Active</b>\n\nPlease send your meal update text, for example:\n• <code>meal 5- nur 1, ajmain 1, tanvir 2</code>\n• <code>5 traikh nur 1 meal,ajmain 2 ,tanvir 1 meal,baki sobai 0</code>\n• <code>ajker meal nur 2, tanvir 1</code>`;
+    await sendTelegramMessage(chatId, promptMeal);
+    return;
+  }
+
+  if (text === '💰 Deposit / Expense' || text.startsWith('/deposit')) {
+    const categoryMarkup = {
+      inline_keyboard: [
+        [
+          { text: '🏦 Account (Fixed Cost)', callback_data: 'cat:Account' },
+          { text: '🍚 Meal (Personal)', callback_data: 'cat:Meal' },
+        ],
+        [
+          { text: '🛒 Grocery / Bazar', callback_data: 'cat:Grocery' },
+          { text: '❌ Cancel', callback_data: 'cancel' }
+        ]
+      ]
+    };
+    const promptDeposit = `💰 <b>Deposit / Expense Entry</b>\n\nPlease select the transaction category:`;
+    await sendTelegramMessage(chatId, promptDeposit, categoryMarkup);
+    return;
+  }
+
+  // 5. Check active user session
   const sessionRes = await supabaseFetch(`telegram_user_sessions?chat_id=eq.${chatId}`);
   const sessions: any[] = await sessionRes.json();
   const currentSession = sessions?.[0];
 
+  // If session is awaiting deposit text
   if (currentSession && currentSession.state === 'awaiting_deposit_text') {
     const selectedCategory: 'Account' | 'Meal' | 'Grocery' = currentSession.category || 'Grocery';
     const parsedExpense = parseBazarExpenseMessage(text, roommateNames, selectedCategory);
 
     if (parsedExpense) {
-      // Validate rule: If category !== 'Grocery', paidBy cannot be 'Meal'
       if (selectedCategory !== 'Grocery' && parsedExpense.paidBy.toLowerCase() === 'meal') {
         await sendTelegramMessage(
           chatId,
@@ -462,10 +561,27 @@ async function handleMessage(msg: any) {
     }
   }
 
-  // 5. Try parsing as Bazar / Deposit directly if text looks like a deposit or has multi-line / total / category keywords
+  // If session is explicitly awaiting meal text
+  if (currentSession && currentSession.state === 'awaiting_meal_text') {
+    const mealParsed = parseMealMessage(text, roommateNames);
+    if (mealParsed) {
+      await promptMealConfirmation(chatId, activeMonth.id, mealParsed);
+      return;
+    }
+  }
+
+  // 6. Intelligent automatic parsing: prioritize Meal first if meal keywords or roommate pattern detected
+  const isExplicitMealText = /\b(meal|mil|meals|khabar|kheyeche|traikh|tarikh)\b/i.test(text);
+  const mealParsed = parseMealMessage(text, roommateNames);
+
+  if (isExplicitMealText && mealParsed) {
+    await promptMealConfirmation(chatId, activeMonth.id, mealParsed);
+    return;
+  }
+
+  // 7. Try parsing as Bazar / Deposit if text looks like a deposit or has multi-line / total / expense keywords
   const isDepositIntent = /\b(deposit|joma|payment|taka|tk|total|mot|bazar|sim|begun|alu|mach|mangsho|dim)\b/i.test(text) || text.includes('\n');
   if (isDepositIntent) {
-    // Default to Grocery if directly sent, or detect if category was mentioned
     let detectedCategory: 'Account' | 'Meal' | 'Grocery' = 'Grocery';
     if (/\b(account|fixed|rent|wifi|gas|current|bua)\b/i.test(text)) {
       detectedCategory = 'Account';
@@ -475,7 +591,6 @@ async function handleMessage(msg: any) {
 
     const parsedExpense = parseBazarExpenseMessage(text, roommateNames, detectedCategory);
     if (parsedExpense) {
-      // Validate rule
       if (detectedCategory !== 'Grocery' && parsedExpense.paidBy.toLowerCase() === 'meal') {
         parsedExpense.paidBy = roommateNames[0] || 'Manager';
       }
@@ -484,36 +599,46 @@ async function handleMessage(msg: any) {
     }
   }
 
-  // 6. Otherwise parse as Meal message
-  const mealParsed = parseMealMessage(text, roommateNames);
+  // 8. Fallback to Meal parsed if detected
   if (mealParsed) {
     await promptMealConfirmation(chatId, activeMonth.id, mealParsed);
     return;
   }
 
-  // If unclear, show menu options
-  const hintMarkup = {
-    inline_keyboard: [
-      [
-        { text: '🍽️ Record Meals', callback_data: 'mode:meal' },
-        { text: '💰 Deposit / Expense', callback_data: 'mode:deposit' }
-      ]
-    ]
-  };
-
+  // 9. If unclear, prompt user
   await sendTelegramMessage(
     chatId,
-    `🤔 <i>I didn't recognize that update format.</i>\n\nPlease choose what you want to record:`,
-    hintMarkup
+    `🤔 <i>I didn't recognize that format.</i>\n\nPlease tap <b>🍽️ Record Meals</b> or <b>💰 Deposit / Expense</b> below, or tap <b>🔄 Restart</b> to refresh.`
   );
 }
 
 async function promptMealConfirmation(chatId: string | number, monthId: string, parsed: ParsedMealEntry) {
+  // Check if meal history already exists for this date
+  const checkRes = await supabaseFetch(`daily_meals?month_id=eq.${monthId}&date=eq.${parsed.dateStr}`);
+  const existingRows: any[] = await checkRes.json();
+  const hasExisting = existingRows && existingRows.length > 0 && existingRows[0]?.meals;
+
+  let existingSummary = '';
+  let buttonLabel = '✅ Correct, Send';
+
+  if (hasExisting) {
+    buttonLabel = '⚠️ Yes, Overwrite Entry';
+    const oldEntries = Object.entries(existingRows[0].meals)
+      .map(([name, count]) => `${name}: ${count}`)
+      .join(', ');
+
+    existingSummary = `\n⚠️ <b>Meal already updated on this date!</b>\n<i>Previous entry:</i> <code>${oldEntries || 'Recorded'}</code>\n<i>Your new input will overwrite the previous entry.</i>\n`;
+  }
+
   const mealLines = Object.entries(parsed.meals)
     .map(([name, count]) => `• <b>${name}</b>: ${count} meal(s)`)
     .join('\n');
 
-  const messageText = `🍽️ <b>Daily Meal Update Check</b>\n\n📅 <b>${parsed.displayDate}</b>\n\n${mealLines}\n\n<b>Total Meals:</b> ${parsed.totalMeals}\n\n<i>Is this correct? Click below to confirm and update the sheet:</i>`;
+  const dateNotice = !parsed.hasExplicitDate
+    ? `📅 <b>${parsed.displayDate}</b> <i>(Today - default)</i>`
+    : `📅 <b>${parsed.displayDate}</b>`;
+
+  const messageText = `🍽️ <b>Daily Meal Update Check</b>\n\n${dateNotice}${existingSummary}\n\n<b>New Input:</b>\n${mealLines}\n\n<b>Total Meals:</b> ${parsed.totalMeals}\n\n<i>${hasExisting ? 'Meal already exists on this date. Click below to confirm overwrite:' : 'Is this correct? Click below to confirm and update the sheet:'}</i>`;
 
   const insertRes = await supabaseFetch('pending_bot_actions', {
     method: 'POST',
@@ -530,8 +655,8 @@ async function promptMealConfirmation(chatId: string | number, monthId: string, 
   const replyMarkup = {
     inline_keyboard: [
       [
-        { text: '✅ Correct, Send', callback_data: `act:${actionId}` },
-        { text: '❌ Cancel', callback_data: 'cancel' }
+        { text: buttonLabel, callback_data: `act:${actionId}` },
+        { text: '❌ Cancel (Keep Previous)', callback_data: 'cancel' }
       ]
     ]
   };
@@ -540,7 +665,6 @@ async function promptMealConfirmation(chatId: string | number, monthId: string, 
 }
 
 async function promptExpenseConfirmation(chatId: string | number, monthId: string, parsed: ParsedExpenseEntry) {
-  // Check calculation warning
   let calculationNote = '';
   if (parsed.isAmountMismatch) {
     calculationNote = `\n⚠️ <b>Calculation Notice:</b>\nStated Total: ৳${parsed.statedAmount} | Item Sum: ৳${parsed.calculatedAmount}\nUsing stated total: <b>৳${parsed.amount}</b>\n`;
@@ -548,7 +672,6 @@ async function promptExpenseConfirmation(chatId: string | number, monthId: strin
     calculationNote = `\n✅ <i>Sum verified: Items total exactly ৳${parsed.amount}</i>\n`;
   }
 
-  // Truncate preview description if very long
   const descPreview = parsed.description.length > 250
     ? parsed.description.substring(0, 245) + '...'
     : parsed.description;

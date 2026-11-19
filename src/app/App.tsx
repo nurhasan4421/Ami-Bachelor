@@ -553,7 +553,13 @@ export default function App() {
 
       if (error) throw error;
 
-      showToast("Telegram Connect Code regenerated!");
+      // Disconnect all previous telegram chats linked to this hostel so old connections cannot post
+      await supabase
+        .from('telegram_connections')
+        .delete()
+        .eq('hostel_id', hostelId);
+
+      showToast("Telegram Connect Code regenerated! Previous bot connections disconnected.");
       fetchMonthsAndHostels();
     } catch (e: any) {
       console.error(e);
