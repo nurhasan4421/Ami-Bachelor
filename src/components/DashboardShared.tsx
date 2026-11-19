@@ -23,6 +23,7 @@ import {
   Eye,
   LogOut,
   X,
+  Menu,
   Clock,
   Trash2,
   CheckCircle2,
@@ -342,6 +343,47 @@ export function DashboardHeader({
     }
   }, [broadcastNotice]);
 
+  // Track unread notice state: bell only pulses red when there is an unread announcement
+  const [hasUnreadNotice, setHasUnreadNotice] = useState<boolean>(() => {
+    try {
+      const clean = (broadcastNotice || '').trim();
+      if (!clean || clean.toLowerCase().includes('sunday evening')) return false;
+      const read = localStorage.getItem('ami_last_read_notice');
+      return read !== clean;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const clean = (broadcastNotice || '').trim();
+    if (clean && !clean.toLowerCase().includes('sunday evening')) {
+      try {
+        const read = localStorage.getItem('ami_last_read_notice');
+        if (read !== clean) {
+          setHasUnreadNotice(true);
+        }
+      } catch {}
+    }
+  }, [broadcastNotice]);
+
+  const handleBellClick = () => {
+    // Immediately clear red dot on read
+    setHasUnreadNotice(false);
+    try {
+      const clean = (broadcastNotice || '').trim();
+      if (clean) {
+        localStorage.setItem('ami_last_read_notice', clean);
+      }
+    } catch {}
+
+    if (current === 'member' && onOpenNoticeModal) {
+      onOpenNoticeModal();
+    } else {
+      setShowAdminNoticeModal(true);
+    }
+  };
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -365,91 +407,63 @@ export function DashboardHeader({
         {/* Brand / Logo */}
         <div
           onClick={() => onNavigate('dashboard')}
-          className="flex cursor-pointer items-center select-none hover:opacity-85 transition-opacity"
+          className="flex cursor-pointer items-center select-none hover:opacity-85 transition-opacity shrink-0"
           title="Home"
         >
           <img src="/logo.png" alt="Logo" className="h-[34px] w-auto object-contain" />
         </div>
 
+        {/* Navbar Center: Mini font @NURHASAN4421 */}
+        <div className="flex items-center justify-center select-none pointer-events-none px-2">
+          <span className="text-[10px] sm:text-[11px] font-sf-bold tracking-wider text-[#8e8e8e] uppercase">
+            @NURHASAN4421
+          </span>
+        </div>
+
         {/* Action Controls & Dropdown Menu */}
-        <div ref={menuRef} className="relative flex items-center gap-[8px] sm:gap-[10px]">
-          {/* Admin / Member Role Switch Mini Icon */}
+        <div ref={menuRef} className="relative flex items-center gap-[14px] sm:gap-[18px] shrink-0">
+          {/* 1. Admin / Member Role Switch Icon (No outline/radius, same size) */}
           <button
             type="button"
             onClick={onToggleRole}
-            className={`relative flex h-[34px] w-[34px] items-center justify-center rounded-xl border transition-all active:scale-95 cursor-pointer shadow-xs ${
-              current === 'admin'
-                ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100/70'
-                : 'bg-white border-[#d6d6d6] text-[#626262] hover:text-[#141414] hover:bg-slate-50'
-            }`}
+            className="relative flex items-center justify-center p-0.5 text-[#141414] hover:text-red-600 transition-colors active:scale-90 cursor-pointer bg-transparent border-0 outline-none"
             title={current === 'admin' ? "Admin Mode Active (Tap to preview as Member)" : "Member Mode Active (Tap to switch to Admin)"}
             aria-label="Toggle Admin/Member mode"
           >
             {current === 'admin' ? (
-              <>
-                <ShieldCheck size={18} className="text-red-600" />
-                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600 ring-1 ring-white" />
-              </>
+              <ShieldCheck size={22} className="text-red-600" />
             ) : (
-              <>
-                <Eye size={17} className="text-[#626262]" />
-                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-slate-400 ring-1 ring-white" />
-              </>
+              <Eye size={22} className="text-[#141414] hover:text-red-600 transition-colors" />
             )}
           </button>
 
-          {/* Notification Icon (on the left side of hamburger) */}
+          {/* 2. Notification Bell Icon (No outline/radius, same size, conditional red dot) */}
           <button
             type="button"
-            onClick={() => {
-              if (current === 'member' && onOpenNoticeModal) {
-                onOpenNoticeModal();
-              } else {
-                setShowAdminNoticeModal(true);
-              }
-            }}
-            className="relative flex h-[34px] w-[34px] items-center justify-center text-[#141414] hover:text-red-600 transition-colors active:scale-95 cursor-pointer bg-transparent border-0"
+            onClick={handleBellClick}
+            className="relative flex items-center justify-center p-0.5 text-[#141414] hover:text-red-600 transition-colors active:scale-90 cursor-pointer bg-transparent border-0 outline-none"
             title={current === 'admin' ? "Manager Notifications & Broadcast" : "Mess Notifications"}
+            aria-label="Notifications"
           >
-            <Bell size={20} className="text-current" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-[#f3f3f1] animate-pulse" />
+            <Bell size={22} className="text-current" />
+            {hasUnreadNotice && (
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-[#f3f3f1] animate-pulse" />
+            )}
           </button>
 
-          {/* Animated Hamburger Icon Button */}
+          {/* 3. Hamburger Menu Icon (No outline/radius, same size 22px) */}
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle navigation menu"
-            className={`relative flex h-[38px] w-[38px] items-center justify-center rounded-xl transition-all active:scale-95 cursor-pointer border ${
-              isMenuOpen 
-                ? 'bg-red-50 border-red-200 text-red-600' 
-                : 'bg-white border-[#d6d6d6] text-[#141414] hover:border-red-400 shadow-xs'
-            }`}
+            className="relative flex items-center justify-center p-0.5 text-[#141414] hover:text-red-600 transition-colors active:scale-90 cursor-pointer bg-transparent border-0 outline-none"
             title="Navigation Menu"
           >
-            <div className="flex h-[18px] w-[20px] flex-col items-center justify-center gap-[4.5px]">
-              <span
-                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
-                  isMenuOpen
-                    ? 'bg-red-600 rotate-45 translate-y-[7px]'
-                    : 'bg-[#141414]'
-                }`}
-              />
-              <span
-                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
-                  isMenuOpen
-                    ? 'opacity-0 translate-x-2'
-                    : 'bg-[#141414]'
-                }`}
-              />
-              <span
-                className={`block h-[2.5px] w-[18px] rounded-full transition-all duration-300 ease-in-out ${
-                  isMenuOpen
-                    ? 'bg-red-600 -rotate-45 -translate-y-[7px]'
-                    : 'bg-[#141414]'
-                }`}
-              />
-            </div>
+            {isMenuOpen ? (
+              <X size={22} className="text-red-600" />
+            ) : (
+              <Menu size={22} className="text-[#141414] hover:text-red-600 transition-colors" />
+            )}
           </button>
 
           {/* Dropdown Menu Modal / Sheet */}

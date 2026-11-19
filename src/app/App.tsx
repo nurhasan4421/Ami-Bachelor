@@ -16,6 +16,7 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import SuperAdminPage from '@/components/SuperAdminPage';
 import { showPhonePushNotification } from '@/lib/pushNotifications';
+import { generatePrintableDoc, openPrintableWindow } from '@/lib/pdfReportTemplate';
 
 import { KeyRound, LogOut, Plus, History, ReceiptText, Home, Utensils, RotateCcw, ChevronDown, X, Eye, ShieldCheck, Users, Wallet, UserCircle, ClipboardList, Copy, Check, ShoppingBag, CheckCircle2, Circle, Settings, Banknote, Trash2, UserCheck, UserX, Download, ArrowRight, ArrowLeft, Calendar, MoreVertical, Bell, Clock, Power, Bot, Info } from 'lucide-react';
 
@@ -432,7 +433,56 @@ export default function App() {
 
   const handleNavClick = (view: ViewState) => { setActiveView(view); setIsMenuOpen(false); };
   
-  const handlePrintMasterTransaction = () => { window.print(); };
+  const handlePrintMasterTransaction = () => {
+    const totalExp = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const contentHtml = `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="${window.location.origin}/logo.png" style="height: 52px; object-fit: contain; margin-bottom: 8px;" />
+        <h1 style="margin: 0; font-size: 22px;">Master Transaction Register</h1>
+        <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">${currentMonthObj?.hostels?.name || 'Hostel Workspace'} • ${currentMonthObj?.name || 'Current Month'}</p>
+        <p style="color: #94a3b8; font-size: 11px; margin: 2px 0 0 0;">Total Logged: <b>৳${totalExp.toLocaleString()}</b> across ${expenses.length} records</p>
+      </div>
+
+      <h2>Transaction Details</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 100px;">Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Paid By</th>
+            <th class="text-right" style="width: 120px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sortedExpenses.map(e => `
+            <tr>
+              <td>${new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
+              <td><b>${e.description}</b></td>
+              <td><span style="font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${e.category}</span></td>
+              <td>${e.paidBy}</td>
+              <td class="text-right font-mono">৳${Number(e.amount || 0).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr style="background: #f8fafc; font-weight: bold;">
+            <td colspan="4" class="text-right">TOTAL EXPENSES:</td>
+            <td class="text-right font-mono" style="color: #ff0000; font-size: 15px;">৳${totalExp.toFixed(2)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    const html = generatePrintableDoc({
+      defaultFilename: `Master_Transactions_${(currentMonthObj?.name || 'CurrentMonth').replace(/\s+/g, '_')}`,
+      contentHtml
+    });
+
+    openPrintableWindow(html);
+  };
 
   // Set month as the workspace active month (visible to all members on home page)
   const handleSetGlobalActiveMonth = async (targetMonth: MonthSheet) => {
@@ -721,9 +771,108 @@ export default function App() {
   };
 
   const handleExportMonthPDF = () => {
-    const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" /><title>Month Report - ${currentMonthObj?.name}</title><style>@media print { .no-print { display: none !important; } body { padding: 0 !important; } } body { font-family: -apple-system, sans-serif; padding: 20px 40px; color: #1e293b; background: #fff; } .toolbar { position: sticky; top: 0; left: 0; right: 0; background: #141414; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 99999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); border-radius: 12px; margin-bottom: 24px; } .btn-back { background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .btn-save { background: #ff0000; color: #fff; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 30px; font-size: 14px; } th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; } th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 12px; color: #64748b; } h1, h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; } .text-right { text-align: right; } .font-mono { font-family: monospace; font-size: 16px; font-weight: bold; } .credit { color: #16a34a; } .due { color: #dc2626; }</style></head><body><div class="no-print toolbar"><button onclick="try{if(window.opener){window.close();}else if(window.history.length>1){window.history.back();}else{window.location.href='/';}}catch(e){window.location.href='/';}" class="btn-back">← Back to App</button><button onclick="window.print()" class="btn-save">📥 Save / Download PDF</button></div><div style="text-align: center; margin-bottom: 40px;"><img src="${window.location.origin}/logo.png" style="height: 60px; object-fit: contain; margin-bottom: 10px;" /><h1 style="margin:0; border:none;">Workspace Report: ${currentMonthObj?.hostels?.name}</h1><p style="color: #64748b; margin-top: 5px;">${currentMonthObj?.name} • Generated ${new Date().toLocaleDateString()}</p></div><h2>1. Members Account Summary</h2><table><tr><th>Name</th><th class="text-right">Total Bill</th><th class="text-right">Total Paid</th><th class="text-right">Net Balance</th></tr>${calculations.indAccounts.map(a => { const totalBill = Object.values(a.expenses).reduce((sum, val) => sum + val, 0) + a.manualAdjustment; const bal = totalBill - a.paid; return `<tr><td><b>${a.name}</b></td><td class="text-right font-mono">৳${totalBill.toFixed(2)}</td><td class="text-right font-mono">৳${a.paid.toFixed(2)}</td><td class="text-right font-mono ${bal > 0 ? 'due' : 'credit'}">${bal > 0 ? 'DUE ৳'+bal.toFixed(2) : 'CR ৳'+Math.abs(bal).toFixed(2)}</td></tr>`; }).join('')}</table><h2>2. Fixed Costs</h2><table><tr><th>Category</th><th class="text-right">Total Amount</th><th class="text-right">Per Person (${roommates.length})</th></tr>${fixedCosts.map(f => `<tr><td>${f.category}</td><td class="text-right font-mono">৳${f.amount.toFixed(2)}</td><td class="text-right font-mono">৳${(f.amount/roommates.length).toFixed(2)}</td></tr>`).join('')}</table><h2>3. Expense History</h2><table><tr><th>Date</th><th>Description</th><th>Category</th><th>Paid By</th><th class="text-right">Amount</th></tr>${expenses.map(e => `<tr><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.description}</td><td>${e.category}</td><td>${e.paidBy}</td><td class="text-right font-mono">৳${e.amount.toFixed(2)}</td></tr>`).join('')}</table><h2>4. Member Meal Count</h2><table><tr><th>Name</th><th class="text-right">Total Meals Consumed</th></tr>${calculations.mealStats.map(s => `<tr><td>${s.person}</td><td class="text-right font-mono">${s.meals}</td></tr>`).join('')}</table></body></html>`;
-    const printWindow = window.open('', '_blank');
-    if(printWindow) { printWindow.document.write(html); printWindow.document.close(); setTimeout(() => printWindow.print(), 800); }
+    const contentHtml = `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="${window.location.origin}/logo.png" style="height: 52px; object-fit: contain; margin-bottom: 8px;" />
+        <h1 style="margin: 0; font-size: 22px;">Workspace Summary Report: ${currentMonthObj?.hostels?.name || 'Hostel Mess'}</h1>
+        <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">${currentMonthObj?.name || 'Current Month'} • Generated ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+      </div>
+
+      <h2>1. Members Account Summary</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Member Name</th>
+            <th class="text-right">Total Bill</th>
+            <th class="text-right">Total Paid</th>
+            <th class="text-right">Net Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${calculations.indAccounts.map(a => {
+            const totalBill = Object.values(a.expenses).reduce((sum, val) => sum + val, 0) + a.manualAdjustment;
+            const bal = totalBill - a.paid;
+            return `
+              <tr>
+                <td><b>${a.name}</b></td>
+                <td class="text-right font-mono">৳${totalBill.toFixed(2)}</td>
+                <td class="text-right font-mono">৳${a.paid.toFixed(2)}</td>
+                <td class="text-right font-mono ${bal > 0 ? 'due' : 'credit'}">${bal > 0 ? 'DUE ৳'+bal.toFixed(2) : 'CR ৳'+Math.abs(bal).toFixed(2)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+
+      <h2>2. Fixed Costs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th class="text-right">Total Amount</th>
+            <th class="text-right">Per Person (${roommates.length})</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fixedCosts.map(f => `
+            <tr>
+              <td>${f.category}</td>
+              <td class="text-right font-mono">৳${f.amount.toFixed(2)}</td>
+              <td class="text-right font-mono">৳${(f.amount/roommates.length).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <h2>3. Expense History</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Paid By</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${expenses.map(e => `
+            <tr>
+              <td>${new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</td>
+              <td>${e.description}</td>
+              <td>${e.category}</td>
+              <td>${e.paidBy}</td>
+              <td class="text-right font-mono">৳${Number(e.amount || 0).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <h2>4. Member Meal Count</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Member Name</th>
+            <th class="text-right">Total Meals Consumed</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${calculations.mealStats.map(s => `
+            <tr>
+              <td>${s.person}</td>
+              <td class="text-right font-mono">${s.meals}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    const html = generatePrintableDoc({
+      defaultFilename: `Month_Report_${(currentMonthObj?.name || 'CurrentMonth').replace(/\s+/g, '_')}`,
+      contentHtml
+    });
+
+    openPrintableWindow(html);
   };
 
   const handleExportMemberPDF = () => {
@@ -908,9 +1057,13 @@ export default function App() {
     <div class="status-badge ${totalDue > 0 ? 'status-due' : totalDue < 0 ? 'status-credit' : 'status-settled'}">${totalDue > 0 ? 'PAYMENT DUE' : totalDue < 0 ? 'ACCOUNT IN CREDIT' : 'ACCOUNT SETTLED'}</div>
   </div>`;
 }).join('');
-    const fullHTML = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" /><title>All Member Accounts</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet"><style>@media print { .no-print { display: none !important; } body { padding: 0 !important; } .receipt { border: none !important; padding: 20px !important; margin: 0 auto !important; box-shadow: none !important; max-width: 100% !important; } } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; padding: 20px; color: #0f172a; } .toolbar { position: sticky; top: 0; left: 0; right: 0; background: #141414; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 99999; box-shadow: 0 4px 16px rgba(0,0,0,0.25); border-radius: 12px; margin-bottom: 24px; } .btn-back { background: #2b2b2b; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .btn-save { background: #ff0000; color: #fff; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 700; font-size: 13px; cursor: pointer; } .bengali-font { font-family: 'Noto Sans Bengali', sans-serif; } .receipt { width: 100%; max-width: 400px; margin: 0 auto 40px auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 16px; } .header { text-align: center; border-bottom: 2px dashed #e2e8f0; padding-bottom: 24px; margin-bottom: 24px; } .hostel-name { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; margin: 0 0 8px 0; } .meta { font-size: 12px; color: #64748b; margin: 0; text-transform: uppercase; letter-spacing: 1px; } .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; } .row .label { color: #475569; } .row .value { font-family: monospace; font-size: 15px; font-weight: 600; } .divider { border-top: 1px solid #e2e8f0; margin: 16px 0; } .total-row { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 18px; margin-top: 24px; } .status-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 800; text-align: center; margin-top: 24px; width: calc(100% - 24px); } .status-due { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; } .status-credit { background: #f0fdf4; color: #22c55e; border: 1px solid #bbf7d0; } .status-settled { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }</style></head><body><div class="no-print toolbar"><button onclick="try{if(window.opener){window.close();}else if(window.history.length>1){window.history.back();}else{window.location.href='/';}}catch(e){window.location.href='/';}" class="btn-back">← Back to App</button><button onclick="window.print()" class="btn-save">📥 Save / Download PDF</button></div>${allReceiptsHTML}</body></html>`;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) { printWindow.document.write(fullHTML); printWindow.document.close(); setTimeout(() => { printWindow.print(); }, 800); }
+
+    const fullHTML = generatePrintableDoc({
+      defaultFilename: `All_Member_Accounts_${(currentMonthObj?.name || 'CurrentMonth').replace(/\s+/g, '_')}`,
+      contentHtml: allReceiptsHTML
+    });
+
+    openPrintableWindow(fullHTML);
   };
 
   if (loadingAuth) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-slate-400">LOADING...</div>;

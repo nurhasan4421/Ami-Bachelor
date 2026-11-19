@@ -69,6 +69,15 @@ export default function MemberPage({
     }
   }, [showNoticeModal, showAvailabilityModal]);
 
+  // Mark notice as read in localStorage when member opens modal
+  useEffect(() => {
+    if (showNoticeModal && broadcastNotice && broadcastNotice.trim()) {
+      try {
+        localStorage.setItem('ami_last_read_notice', broadcastNotice.trim());
+      } catch {}
+    }
+  }, [showNoticeModal, broadcastNotice]);
+
   // Live calculation values or design defaults
   const myAccount = calculations?.indAccounts?.find(
     (a: any) => a.name.toLowerCase() === registeredName.toLowerCase()
