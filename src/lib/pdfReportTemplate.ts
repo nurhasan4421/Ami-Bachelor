@@ -231,3 +231,4 @@ export function openPrintableWindow(html: string) {
     printWindow.document.close();
   }
 }
+

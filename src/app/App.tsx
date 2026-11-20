@@ -1407,17 +1407,6 @@ export default function App() {
           />
 
           <main className="dashboard mx-auto flex w-[calc(100%-32px)] flex-col gap-[16px] pb-[32px] lg:max-w-[900px]">
-            <div className="flex items-center justify-between pb-1">
-              <button
-                type="button"
-                onClick={() => handleNavClick('dashboard')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#d6d6d6] text-xs font-sf-bold text-[#141414] hover:bg-slate-50 transition-all cursor-pointer shadow-xs active:scale-95"
-              >
-                <ArrowLeft size={14} className="text-red-600" />
-                <span>Back to Dashboard</span>
-              </button>
-            </div>
-
             {/* View: Timeline */}
             {activeView === 'timeline' && (
               <div className="flex flex-col gap-[16px]">
