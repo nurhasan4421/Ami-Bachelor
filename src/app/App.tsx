@@ -14,6 +14,7 @@ import MemberPage from '@/components/MemberPage';
 import AdminPage from '@/components/AdminPage';
 import { DashboardHeader, type DashboardView } from '@/components/DashboardShared';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import SuperAdminPage from '@/components/SuperAdminPage';
 import { showPhonePushNotification } from '@/lib/pushNotifications';
 import { generatePrintableDoc, openPrintableWindow } from '@/lib/pdfReportTemplate';
@@ -473,6 +474,30 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, [session, activeMonthId, fetchSheetData]);
+
+  const handlePullRefresh = useCallback(async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            window.location.reload();
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("SW update check error:", e);
+    }
+
+    await Promise.all([
+      fetchSheetData(),
+      fetchMonthsAndHostels(),
+    ]);
+    showToast("Updated to latest", "info");
+  }, [fetchSheetData, fetchMonthsAndHostels]);
 
   const handleAddBazarItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1315,6 +1340,12 @@ export default function App() {
       <InstallPwaPrompt 
         forceOpen={showInstallPwa} 
         onDismiss={() => setShowInstallPwa(false)} 
+      />
+
+      {/* Apple-Style Swipe Down Pull-to-Refresh */}
+      <PullToRefresh 
+        onRefresh={handlePullRefresh} 
+        disabled={Boolean(dialog?.isOpen || showFlatmatesModal)} 
       />
 
       {showFlatmatesModal && (
