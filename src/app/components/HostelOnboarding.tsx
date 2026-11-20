@@ -181,9 +181,9 @@ export function HostelOnboarding({
   };
 
   return (
-    <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414] font-sans pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
+    <div className="flex flex-col min-h-dvh h-dvh max-h-dvh overflow-y-auto overscroll-none bg-[#f3f3f1] text-[#141414] font-sans">
       {/* Top Header Bar at exact same Y-axis position */}
-      <div className="p-4 sm:p-5 flex justify-between items-center max-w-md w-full mx-auto shrink-0">
+      <div className="pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 sm:px-5 pb-2 flex justify-between items-center max-w-md w-full mx-auto shrink-0">
         {mode === 'select' ? (
           <>
             {isSuperAdmin ? (
@@ -216,7 +216,7 @@ export function HostelOnboarding({
         )}
       </div>
 
-      <div className="flex flex-col items-center justify-center flex-1 px-4 py-2">
+      <div className="flex flex-col items-center justify-center flex-1 px-4 py-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
         <div className="w-full max-w-[280px] sm:max-w-[300px] mx-auto">
           <div className="text-center mb-4">
             <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />

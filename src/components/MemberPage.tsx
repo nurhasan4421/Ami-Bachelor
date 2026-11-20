@@ -456,7 +456,7 @@ export default function MemberPage({
       {/* MODAL: Member Availability Overview */}
       {showAvailabilityModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80vh] flex flex-col">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80dvh] flex flex-col">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users size={18} className="text-red-600" />
@@ -527,7 +527,7 @@ export default function MemberPage({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 16 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="relative flex w-[calc(100%-16px)] sm:w-full max-w-[420px] max-h-[82vh] flex-col rounded-[22px] sm:rounded-[24px] bg-[#f8f8f6] p-4 sm:p-5 shadow-2xl border border-[#e5e6e1] overflow-hidden select-auto"
+                  className="relative flex w-[calc(100%-16px)] sm:w-full max-w-[420px] max-h-[82dvh] flex-col rounded-[22px] sm:rounded-[24px] bg-[#f8f8f6] p-4 sm:p-5 shadow-2xl border border-[#e5e6e1] overflow-hidden select-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Header */}

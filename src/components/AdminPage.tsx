@@ -998,7 +998,7 @@ export default function AdminPage({
       {/* MODAL: Delete Logged Entries (Opened by Pencil Icon) */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-[24px] bg-white p-5 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80vh] flex flex-col">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-5 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80dvh] flex flex-col">
             <div className="flex items-center justify-between pb-2 border-b border-[#d6d6d6]/60">
               <div className="flex items-center gap-2">
                 <Trash2 size={16} className="text-red-600" />
@@ -1058,7 +1058,7 @@ export default function AdminPage({
       {/* MODAL: Member Availability Overview */}
       {showAvailabilityModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80vh] flex flex-col">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-2xl border border-[#d6d6d6] space-y-4 max-h-[80dvh] flex flex-col">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users size={18} className="text-red-600" />

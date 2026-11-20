@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Bell,
@@ -332,6 +332,16 @@ export function DashboardHeader({
     return [];
   });
 
+  // Check if running inside installed PWA
+  const isPwa = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  }, []);
+
   // Keep live notice updated if prop changes
   useEffect(() => {
     if (broadcastNotice) {
@@ -545,21 +555,25 @@ export function DashboardHeader({
                   </button>
                 )}
 
-                {/* Add to Home App option */}
-                <div className="my-1 border-t border-[#d6d6d6]/60" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    if (onOpenInstallPwa) onOpenInstallPwa();
-                  }}
-                  className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-red-600 hover:bg-red-50/70 transition-all cursor-pointer"
-                >
-                  <span className="text-red-600">
-                    <Smartphone size={16} />
-                  </span>
-                  <span>Install / Add to Home</span>
-                </button>
+                {/* Add to Home App option (only in browser, hidden inside installed PWA) */}
+                {!isPwa && (
+                  <>
+                    <div className="my-1 border-t border-[#d6d6d6]/60" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        if (onOpenInstallPwa) onOpenInstallPwa();
+                      }}
+                      className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-red-600 hover:bg-red-50/70 transition-all cursor-pointer"
+                    >
+                      <span className="text-red-600">
+                        <Smartphone size={16} />
+                      </span>
+                      <span>Install / Add to Home</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -585,7 +599,7 @@ export function DashboardHeader({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 16 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="relative flex w-[calc(100%-16px)] sm:w-full max-w-[420px] max-h-[82vh] flex-col rounded-[22px] sm:rounded-[24px] bg-[#f8f8f6] p-4 sm:p-5 shadow-2xl border border-[#e5e6e1] overflow-hidden"
+                  className="relative flex w-[calc(100%-16px)] sm:w-full max-w-[420px] max-h-[82dvh] flex-col rounded-[22px] sm:rounded-[24px] bg-[#f8f8f6] p-4 sm:p-5 shadow-2xl border border-[#e5e6e1] overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Header */}

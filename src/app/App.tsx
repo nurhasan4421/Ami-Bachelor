@@ -1257,7 +1257,7 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-dvh bg-[#f3f3f1] flex items-center justify-center p-4">
+      <div className="min-h-dvh h-dvh w-full overflow-y-auto overscroll-none bg-[#f3f3f1] flex items-center justify-center p-4">
         <div className="w-full max-w-[280px] sm:max-w-[300px] text-center relative mx-auto">
           <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform mb-2" />
           <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mb-6">@NURHASAN4421</p>

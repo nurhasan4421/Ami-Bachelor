@@ -207,7 +207,7 @@ const longPressTimer = useRef<any>(null);
       {/* Floating Scrollable Feed Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md max-h-[75vh] rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
+          <div className="bg-white w-full max-w-md max-h-[75dvh] rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="bg-red-50 p-2 rounded-xl text-red-500"><Bell size={18} /></div>
