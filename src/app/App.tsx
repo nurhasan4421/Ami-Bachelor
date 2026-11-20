@@ -484,8 +484,6 @@ export default function App() {
           await reg.update();
           if (reg.waiting) {
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-            window.location.reload();
-            return;
           }
         }
       }
@@ -493,12 +491,9 @@ export default function App() {
       console.warn("SW update check error:", e);
     }
 
-    await Promise.all([
-      fetchSheetData(),
-      fetchMonthsAndHostels(),
-    ]);
-    showToast("Updated to latest", "info");
-  }, [fetchSheetData, fetchMonthsAndHostels]);
+    // Native reload so PWA caches, new bundles, and all live data refresh freshly
+    window.location.reload();
+  }, []);
 
   const handleAddBazarItem = async (e: React.FormEvent) => {
     e.preventDefault();

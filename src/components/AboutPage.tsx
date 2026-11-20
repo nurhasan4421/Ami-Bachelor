@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ChevronRight, Globe, Send, Shield, Sparkles, Heart, ExternalLink, HelpCircle, FileText } from 'lucide-react';
 
 interface AboutPageProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function AboutPage({ onBack }: AboutPageProps) {
@@ -53,19 +53,6 @@ export function AboutPage({ onBack }: AboutPageProps) {
 
   return (
     <div className="flex flex-col gap-4 text-[#141414] animate-in fade-in duration-200">
-      {/* Top Header bar with back button */}
-      <div className="flex items-center justify-between pb-2">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-sf-bold text-[#141414] hover:text-red-600 transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={16} />
-          <span>Back</span>
-        </button>
-        <span className="font-sf-bold text-sm text-[#141414]">About</span>
-        <div className="w-12" /> {/* Spacer for balance */}
-      </div>
-
       {/* Main Identity Card (iOS Style) */}
       <section className="rounded-[24px] bg-white p-6 sm:p-7 shadow-sm border border-[#d6d6d6] text-center flex flex-col items-center">
         {/* App Icon */}
@@ -85,7 +72,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
         </div>
 
         <p className="font-sf-regular text-xs text-[#8e8e8e] mb-4">
-          Ami Bachelor Corporation • Copyright © 2026
+          Ami Bachelor • Copyright © 2026
         </p>
 
         {/* Short Story / Why App Was Made */}

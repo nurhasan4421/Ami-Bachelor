@@ -5,33 +5,36 @@ interface PullToRefreshProps {
   disabled?: boolean;
 }
 
-const PULL_THRESHOLD = 95;  // Long swipe down distance (Safari style)
-const MAX_PULL = 145;       // Max visual pull
-const HOLD_REQUIRED_MS = 380; // Must hold down for 380ms past threshold before release to trigger reload
+const PULL_THRESHOLD = 75; // Safari-style pull distance
+const MAX_PULL = 130;      // Max elastic pull
 
 export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProps) {
   const [pullY, setPullY] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isReady, setIsReady] = useState(false);
 
   const startYRef = useRef(0);
   const startXRef = useRef(0);
   const isPullingRef = useRef(false);
-  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isReadyRef = useRef(false);
+
+  const getScrollTop = () => {
+    return Math.max(
+      window.scrollY || 0,
+      window.pageYOffset || 0,
+      document.documentElement.scrollTop || 0,
+      document.body.scrollTop || 0,
+      document.scrollingElement ? document.scrollingElement.scrollTop : 0
+    );
+  };
 
   useEffect(() => {
     if (disabled) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      const scrollPos = window.scrollY || document.documentElement.scrollTop || 0;
-      // Strictly only when page is scrolled completely to the top
-      if (scrollPos <= 0 && !isRefreshing) {
+      // Must be strictly at the top of the page
+      if (getScrollTop() <= 0 && !isRefreshing) {
         startYRef.current = e.touches[0].clientY;
         startXRef.current = e.touches[0].clientX;
         isPullingRef.current = true;
-        isReadyRef.current = false;
-        setIsReady(false);
       } else {
         isPullingRef.current = false;
       }
@@ -40,16 +43,9 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
     const handleTouchMove = (e: TouchEvent) => {
       if (!isPullingRef.current || isRefreshing) return;
 
-      const scrollPos = window.scrollY || document.documentElement.scrollTop || 0;
-      if (scrollPos > 0) {
-        // User scrolled down into page, cancel pull gesture
+      // If user has scrolled down anywhere into the page, immediately abort pull
+      if (getScrollTop() > 0) {
         isPullingRef.current = false;
-        if (holdTimerRef.current) {
-          clearTimeout(holdTimerRef.current);
-          holdTimerRef.current = null;
-        }
-        isReadyRef.current = false;
-        setIsReady(false);
         setPullY(0);
         return;
       }
@@ -59,44 +55,16 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
       const diffY = currentY - startYRef.current;
       const diffX = currentX - startXRef.current;
 
-      // Ensure gesture is predominantly downward vertical, not horizontal
+      // Only engage on deliberate vertical downward pull
       if (diffY > 0 && Math.abs(diffY) > 1.8 * Math.abs(diffX)) {
-        const damped = Math.min(MAX_PULL, diffY * 0.42);
+        const damped = Math.min(MAX_PULL, diffY * 0.45);
         setPullY(damped);
 
-        if (damped > 10 && e.cancelable) {
+        if (damped > 8 && e.cancelable) {
           e.preventDefault();
-        }
-
-        // Check if pulled past threshold
-        if (damped >= PULL_THRESHOLD) {
-          if (!holdTimerRef.current && !isReadyRef.current) {
-            // User must HOLD DOWN for HOLD_REQUIRED_MS past threshold to arm reload
-            holdTimerRef.current = setTimeout(() => {
-              isReadyRef.current = true;
-              setIsReady(true);
-              if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                try { navigator.vibrate(18); } catch {}
-              }
-            }, HOLD_REQUIRED_MS);
-          }
-        } else {
-          // If user moves back up before threshold, cancel hold timer
-          if (holdTimerRef.current) {
-            clearTimeout(holdTimerRef.current);
-            holdTimerRef.current = null;
-          }
-          isReadyRef.current = false;
-          setIsReady(false);
         }
       } else if (diffY <= 0) {
         setPullY(0);
-        if (holdTimerRef.current) {
-          clearTimeout(holdTimerRef.current);
-          holdTimerRef.current = null;
-        }
-        isReadyRef.current = false;
-        setIsReady(false);
       }
     };
 
@@ -104,35 +72,24 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
       if (!isPullingRef.current || isRefreshing) return;
       isPullingRef.current = false;
 
-      if (holdTimerRef.current) {
-        clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
-
-      // ONLY reload if user pulled down past threshold AND held down until isReady was armed!
-      if (isReadyRef.current && pullY >= PULL_THRESHOLD) {
+      // If pulled past threshold, trigger Safari-style reload!
+      if (pullY >= PULL_THRESHOLD) {
         setIsRefreshing(true);
-        setPullY(PULL_THRESHOLD);
+        setPullY(50); // Hold spinner in view while reloading
 
-        const startTime = Date.now();
+        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate(15); } catch {}
+        }
+
         try {
           await onRefresh();
         } catch (err) {
           console.error("Refresh error:", err);
-        } finally {
-          const elapsed = Date.now() - startTime;
-          const remaining = Math.max(0, 650 - elapsed);
-          setTimeout(() => {
-            setIsRefreshing(false);
-            isReadyRef.current = false;
-            setIsReady(false);
-            setPullY(0);
-          }, remaining);
+          setIsRefreshing(false);
+          setPullY(0);
         }
       } else {
-        // Fast swipe or released without holding: immediately snap back without reloading!
-        isReadyRef.current = false;
-        setIsReady(false);
+        // Did not pull far enough: snap back smoothly without reloading
         setPullY(0);
       }
     };
@@ -147,9 +104,27 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchcancel', handleTouchEnd);
-      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
     };
   }, [disabled, isRefreshing, pullY, onRefresh]);
+
+  // Safari elastic pull effect: smoothly translate page content down with the swipe
+  useEffect(() => {
+    const mainContent = document.querySelector('main') as HTMLElement | null;
+    if (mainContent) {
+      if (pullY > 0) {
+        mainContent.style.transform = `translateY(${pullY * 0.65}px)`;
+        mainContent.style.transition = isRefreshing ? 'transform 0.25s ease-out' : 'none';
+      } else {
+        mainContent.style.transform = '';
+        mainContent.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)';
+      }
+    }
+    return () => {
+      if (mainContent) {
+        mainContent.style.transform = '';
+      }
+    };
+  }, [pullY, isRefreshing]);
 
   if (pullY <= 0 && !isRefreshing) return null;
 
@@ -175,22 +150,22 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
   return (
     <div
       style={{
-        top: 'calc(64px + env(safe-area-inset-top, 0px) + 10px)',
-        transform: `translate(-50%, ${pullY > 0 ? pullY * 0.4 : 0}px)`,
-        opacity: Math.min(1, pullY / 35),
+        top: 'calc(64px + env(safe-area-inset-top, 0px) + 8px)',
+        transform: `translate(-50%, ${pullY > 0 ? pullY * 0.3 : 0}px)`,
+        opacity: Math.min(1, pullY / 25),
       }}
-      className="fixed left-1/2 z-[60] pointer-events-none transition-transform duration-75 ease-out select-none flex flex-col items-center justify-center gap-1.5"
+      className="fixed left-1/2 z-[60] pointer-events-none transition-transform duration-75 ease-out select-none flex items-center justify-center"
     >
       {/* Authentic Safari iOS Activity Wheel */}
-      <div className={`flex items-center justify-center p-2 rounded-full transition-transform duration-150 ${isReady ? 'scale-110' : ''}`}>
+      <div className="flex items-center justify-center p-2 rounded-full">
         <svg
-          className={`w-7 h-7 text-[#555] ${isRefreshing || isReady ? 'animate-spin' : ''}`}
-          style={!isRefreshing && !isReady && rotationAngle !== undefined ? { transform: `rotate(${rotationAngle}deg)` } : undefined}
+          className={`w-7 h-7 text-[#555] ${isRefreshing ? 'animate-spin' : ''}`}
+          style={!isRefreshing && rotationAngle !== undefined ? { transform: `rotate(${rotationAngle}deg)` } : undefined}
           viewBox="0 0 24 24"
         >
           {spokes.map((spoke, i) => {
             const angle = i * 30;
-            const spokeOpacity = isRefreshing || isReady ? spoke.opacity : (i / 12 <= progress ? 0.9 : 0.2);
+            const spokeOpacity = isRefreshing ? spoke.opacity : (i / 12 <= progress ? 0.9 : 0.2);
             return (
               <line
                 key={i}
@@ -208,15 +183,6 @@ export function PullToRefresh({ onRefresh, disabled = false }: PullToRefreshProp
           })}
         </svg>
       </div>
-
-      {/* Subtle indicator hint while pulling */}
-      {!isRefreshing && pullY >= PULL_THRESHOLD && (
-        <span className={`text-[10px] font-sf-medium tracking-tight px-2 py-0.5 rounded-full transition-all duration-150 ${
-          isReady ? 'bg-red-50 text-red-600 font-sf-bold' : 'bg-black/5 text-[#8e8e8e]'
-        }`}>
-          {isReady ? 'Release to reload' : 'Hold to reload...'}
-        </span>
-      )}
     </div>
   );
 }
