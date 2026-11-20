@@ -27,7 +27,8 @@ import {
   Clock,
   Trash2,
   CheckCircle2,
-  Smartphone
+  Smartphone,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
