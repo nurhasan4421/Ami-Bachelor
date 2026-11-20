@@ -186,14 +186,14 @@ export function RoommateManager({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Add new flatmate name..."
-                className="flex-1 px-4 py-2.5 bg-white border border-[#d6d6d6] rounded-[30px] font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
+                className="flex-1 h-[34px] px-3 py-1 bg-white border border-[#d6d6d6] rounded-xl font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
               />
               <button
                 type="submit"
                 disabled={!newName.trim()}
-                className="bg-red-600 text-white px-5 py-2.5 rounded-[30px] font-sf-semibold text-xs hover:bg-red-700 disabled:opacity-40 transition-all shadow-md shadow-red-600/20 cursor-pointer"
+                className="h-[34px] bg-red-600 text-white px-3.5 rounded-xl font-sf-semibold text-xs hover:bg-red-700 disabled:opacity-40 transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
               >
-                <UserPlus size={16} className="inline mr-1" /> Add
+                <UserPlus size={14} /> <span>Add</span>
               </button>
             </form>
           )}

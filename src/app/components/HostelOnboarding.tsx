@@ -149,27 +149,39 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 font-sans">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-36 h-auto md:w-44 mx-auto object-contain hover:scale-105 transition-transform" />
-          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-2 mb-4">@NURHASAN4421</p>
+    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 py-2 font-sans">
+      <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto">
+        {/* Back button on top of logo like logout Y-axis height */}
+        {mode !== 'select' && (
+          <div className="w-full flex items-center justify-start mb-2">
+            <button 
+              onClick={() => { setMode('select'); setError(''); setJoinSuccessMsg(''); }} 
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer py-1 px-1 -ml-1"
+            >
+              <ArrowLeft size={16} /> <span>Back</span>
+            </button>
+          </div>
+        )}
+
+        <div className="text-center mb-5">
+          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />
+          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-3">@NURHASAN4421</p>
         </div>
 
-        <div className="w-full relative min-h-[360px] flex flex-col justify-center">
+        <div className="w-full relative min-h-[320px] flex flex-col justify-center">
           <AnimatePresence mode="wait">
             {mode === 'select' && (
-              <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+              <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
                 {(managedHostels.length > 0 || joinedHostels.length > 0) && (
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">Your Hostels</p>
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left pl-1 mb-2">Your Hostels</p>
                     {managedHostels.map(h => {
                       const isPending = h.status === 'pending';
                       const isRejected = h.status === 'rejected';
                       const isDeactivated = h.status === 'deactivated';
 
                       return (
-                        <div key={h.id} className={`w-full flex items-center justify-between p-2 pl-4 pr-2 rounded-2xl transition-all border ${
+                        <div key={h.id} className={`w-full flex items-center justify-between p-2 pl-3 pr-2 rounded-xl transition-all border ${
                           isPending 
                             ? 'bg-amber-50/70 border-amber-200' 
                             : isRejected 
@@ -181,61 +193,63 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                           <button 
                             disabled={isPending || isDeactivated}
                             onClick={() => onJoined(h.latestMonthId)} 
-                            className="flex items-center gap-3 flex-1 text-left disabled:cursor-not-allowed"
+                            className="flex items-center gap-2.5 flex-1 text-left disabled:cursor-not-allowed"
                           >
-                            <div className={`p-2 rounded-xl ${
+                            <div className={`p-1.5 rounded-lg ${
                               isPending 
                                 ? 'bg-amber-100 text-amber-700' 
                                 : isRejected
                                 ? 'bg-red-100 text-red-600'
                                 : 'bg-blue-100 text-blue-600'
                             }`}>
-                              {isPending ? <Clock size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                              {isPending ? <Clock size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-black text-sm text-slate-800">{h.name}</p>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-black text-xs text-slate-800 truncate">{h.name}</p>
                                 {isPending && (
-                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 animate-pulse">
-                                    Under Verification
+                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-900 animate-pulse shrink-0">
+                                    Pending
                                   </span>
                                 )}
                                 {isRejected && (
-                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-red-200 text-red-800">
+                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-red-200 text-red-800 shrink-0">
                                     Rejected
                                   </span>
                                 )}
-                                {isDeactivated && (
-                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-slate-200 text-slate-600">
-                                    Deactivated
-                                  </span>
-                                )}
                               </div>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                {isPending ? 'Awaiting Super Admin Approval' : isRejected ? `Rejected: ${h.rejection_reason || 'Invalid TxID'}` : 'Manager'}
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                                {isPending ? 'Awaiting Approval' : isRejected ? (h.rejection_reason || 'Rejected') : 'Manager'}
                               </p>
                             </div>
                           </button>
-                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Delete Hostel"><Trash2 size={16} /></button>
+                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete Hostel"><Trash2 size={14} /></button>
                         </div>
                       );
                     })}
                     {joinedHostels.map(h => (
-                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-4 pr-2 bg-white hover:bg-emerald-50 rounded-2xl transition-all border border-slate-200 hover:border-emerald-200 group">
-                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-3 flex-1 text-left cursor-pointer">
-                          <div className="bg-emerald-100 text-emerald-600 p-2 rounded-xl"><Eye size={18} /></div>
-                          <div><p className="font-black text-sm text-slate-800">{h.name}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Member</p></div>
+                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-3 pr-2 bg-white hover:bg-emerald-50 rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group">
+                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-2.5 flex-1 text-left cursor-pointer">
+                          <div className="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg"><Eye size={16} /></div>
+                          <div><p className="font-black text-xs text-slate-800">{h.name}</p><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Member</p></div>
                         </button>
-                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Leave Hostel"><Trash2 size={16} /></button>
+                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Leave Hostel"><Trash2 size={14} /></button>
                       </div>
                     ))}
-                    <div className="w-full h-px bg-slate-200 my-4"></div>
+                    <div className="w-full h-px bg-slate-200 my-3"></div>
                   </div>
                 )}
-                <div className="space-y-4">
-                  <button onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} disabled={!canJoin} className="w-full py-4.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-base shadow-lg shadow-slate-900/10 active:scale-98 transition-all cursor-pointer">Join Hostel</button>
+                <div className="space-y-3">
+                  {/* Outlined Join Hostel Button */}
+                  <button 
+                    onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} 
+                    disabled={!canJoin} 
+                    className="w-full py-3 bg-transparent hover:bg-slate-100 text-slate-800 border-2 border-slate-800 rounded-xl font-black text-sm active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Join Hostel
+                  </button>
                   <div className="text-center">
-                    <button onClick={() => { setMode('create'); setError(''); }} disabled={!canCreate} className="text-sm font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
+                    <button onClick={() => { setMode('create'); setError(''); }} disabled={!canCreate} className="text-xs font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
                       {canCreate ? 'Create New Hostel' : `Create limit reached (${MAX_HOSTELS})`}
                     </button>
                   </div>
@@ -247,91 +261,97 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
               <motion.div key="create" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 {!createdData ? (
                   <>
-                    <button onClick={() => {setMode('select'); setError('');}} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 mb-6 font-black text-[11px] uppercase tracking-widest transition-colors cursor-pointer"><ArrowLeft size={14} /> Back</button>
-                    <h2 className="text-2xl font-black mb-6 text-slate-800 text-center">Create New Hostel</h2>
+                    <h2 className="text-xl font-black mb-4 text-slate-800 text-center">Create New Hostel</h2>
 
-                    <form onSubmit={handleCreate} className="space-y-3.5">
+                    <form onSubmit={handleCreate} className="space-y-3">
                       {/* Field 1: Hostel Name */}
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Building className="text-slate-400" size={18} /></div>
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><Building className="text-slate-400" size={16} /></div>
                         <input 
                           type="text" 
-                          placeholder="Hostel Name (e.g. Villa 40)" 
+                          placeholder="Hostel Name" 
                           value={hostelName} 
                           onChange={(e) => setHostelName(e.target.value)} 
-                          className="w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-sm" 
+                          className="w-full pl-10 pr-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-xs" 
                           autoFocus 
                         />
                       </div>
 
                       {/* Field 2: Your Name (Manager) */}
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={18} /></div>
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={16} /></div>
                         <input 
                           type="text" 
                           placeholder="Your Name (Manager)" 
                           value={managerName} 
                           onChange={(e) => setManagerName(e.target.value)} 
-                          className="w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-sm" 
+                          className="w-full pl-10 pr-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-xs" 
                         />
                       </div>
 
                       {/* Divider */}
-                      <div className="w-full h-px bg-slate-200 my-2" />
+                      <div className="w-full h-px bg-slate-200 my-1" />
 
-                      {/* Mini Payment Method Selector */}
-                      <div className="flex gap-2">
-                        {(['bKash', 'Nagad', 'Rocket'] as const).map((method) => (
-                          <button
-                            key={method}
-                            type="button"
-                            onClick={() => setPaymentMethod(method)}
-                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] uppercase tracking-wider border transition-all cursor-pointer ${
-                              paymentMethod === method
-                                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                            }`}
-                          >
-                            {method}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Field 3: Transaction ID */}
+                      {/* Field 3: Number */}
                       <div className="relative">
                         <input 
-                          type="text" 
-                          placeholder="Transaction ID (TrxID) *" 
-                          value={transactionId} 
-                          onChange={(e) => setTransactionId(e.target.value.toUpperCase())} 
-                          className="w-full px-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-mono font-bold text-slate-800 outline-none uppercase tracking-wider text-sm" 
+                          type="tel" 
+                          placeholder="Number" 
+                          value={paymentPhone} 
+                          onChange={(e) => setPaymentPhone(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium text-xs text-slate-800 outline-none" 
                         />
                       </div>
 
-                      {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
+                      {/* Field 4: Transaction ID + select method in line */}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input 
+                            type="text" 
+                            placeholder="Transaction ID (TrxID) *" 
+                            value={transactionId} 
+                            onChange={(e) => setTransactionId(e.target.value.toUpperCase())} 
+                            className="w-full px-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-mono font-bold text-slate-800 outline-none uppercase tracking-wider text-xs" 
+                          />
+                        </div>
+                        <div className="relative shrink-0">
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value as any)}
+                            className="h-full px-2.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-slate-800 outline-none cursor-pointer focus:border-blue-400"
+                          >
+                            <option value="bKash">bKash</option>
+                            <option value="Nagad">Nagad</option>
+                            <option value="Rocket">Rocket</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2.5 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
 
                       <button 
                         type="submit" 
                         disabled={!hostelName.trim() || !managerName.trim() || !transactionId.trim() || loading} 
-                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 active:scale-98"
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 active:scale-98"
                       >
-                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Hostel'}
+                        {loading ? <Loader2 className="animate-spin" size={16} /> : 'Create Hostel'}
                       </button>
                     </form>
                   </>
                 ) : (
-                  <div className="text-center py-4">
-                    <div className="bg-amber-100 text-amber-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><Clock size={32} strokeWidth={2.5} /></div>
-                    <h2 className="text-2xl font-black text-slate-800 mb-2">Submitted for Verification!</h2>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-4">Awaiting Super Admin Approval</p>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 text-xs text-slate-600 space-y-2 text-left">
+                  <div className="text-center py-3">
+                    <div className="bg-amber-100 text-amber-700 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse"><Clock size={28} strokeWidth={2.5} /></div>
+                    <h2 className="text-xl font-black text-slate-800 mb-1.5">Submitted for Verification!</h2>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Awaiting Super Admin Approval</p>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3.5 mb-4 text-xs text-slate-600 space-y-1.5 text-left">
                       <p><strong>Hostel:</strong> {hostelName}</p>
                       <p><strong>Method:</strong> <span className="font-bold text-slate-800">{paymentMethod}</span></p>
+                      {paymentPhone && <p><strong>Number:</strong> {paymentPhone}</p>}
                       <p><strong>Transaction ID:</strong> <span className="font-mono text-blue-600 font-bold">{transactionId}</span></p>
                       <p><strong>Security Code:</strong> <span className="font-mono font-bold">{createdData.code}</span></p>
-                      <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">The Super Admin will check the transaction statement and activate your hostel soon.</p>
+                      <p className="text-[10px] text-slate-500 pt-1 border-t border-slate-200">The Super Admin will check the transaction statement and activate your hostel soon.</p>
                     </div>
-                    <button onClick={() => { setCreatedData(null); setMode('select'); }} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm shadow-lg shadow-slate-900/10 transition-all active:scale-95 cursor-pointer">Back to Setup</button>
+                    <button onClick={() => { setCreatedData(null); setMode('select'); }} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs shadow-md shadow-slate-900/10 transition-all active:scale-95 cursor-pointer">Back to Setup</button>
                   </div>
                 )}
               </motion.div>
@@ -339,27 +359,26 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
 
             {mode === 'join' && (
               <motion.div key="join" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <button onClick={() => { setMode('select'); setError(''); setJoinSuccessMsg(''); }} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 mb-6 font-black text-[11px] uppercase tracking-widest transition-colors"><ArrowLeft size={14} /> Back</button>
-                <h2 className="text-2xl font-black mb-6 text-slate-800 text-center">Join Your Room</h2>
+                <h2 className="text-xl font-black mb-4 text-slate-800 text-center">Join Your Room</h2>
                 {joinSuccessMsg ? (
-                  <div className="text-center py-4 animate-in zoom-in duration-300">
-                    <div className="bg-emerald-100 text-emerald-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><Clock size={32} strokeWidth={2.5} /></div>
-                    <h3 className="text-lg font-black text-slate-800 mb-2">Request Sent!</h3>
-                    <p className="text-sm font-bold text-slate-500 leading-relaxed mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">{joinSuccessMsg}</p>
-                    <button onClick={() => { setMode('select'); setJoinSuccessMsg(''); }} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black transition-all">Return Home</button>
+                  <div className="text-center py-3 animate-in zoom-in duration-300">
+                    <div className="bg-emerald-100 text-emerald-600 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner"><Clock size={28} strokeWidth={2.5} /></div>
+                    <h3 className="text-base font-black text-slate-800 mb-1.5">Request Sent!</h3>
+                    <p className="text-xs font-bold text-slate-500 leading-relaxed mb-4 bg-white p-3 rounded-xl border border-slate-200">{joinSuccessMsg}</p>
+                    <button onClick={() => { setMode('select'); setJoinSuccessMsg(''); }} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs transition-all">Return Home</button>
                   </div>
                 ) : (
-                  <form onSubmit={handleJoin} className="space-y-4">
+                  <form onSubmit={handleJoin} className="space-y-3">
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={20} /></div>
-                      <input type="text" placeholder="Your Full Name" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all font-bold text-slate-800 outline-none capitalize" autoFocus />
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={16} /></div>
+                      <input type="text" placeholder="Your Full Name" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full pl-10 pr-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-100 focus:border-slate-400 transition-all font-bold text-slate-800 outline-none capitalize text-xs" autoFocus />
                     </div>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><KeyRound className="text-slate-400" size={20} /></div>
-                      <input type="text" placeholder="6-DIGIT CODE" value={securityCode} onChange={(e) => setSecurityCode(e.target.value.toUpperCase())} maxLength={6} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all font-black text-center text-xl tracking-[0.3em] text-slate-800 outline-none uppercase placeholder:tracking-normal placeholder:font-medium placeholder:text-left" />
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><KeyRound className="text-slate-400" size={16} /></div>
+                      <input type="text" placeholder="6-DIGIT CODE" value={securityCode} onChange={(e) => setSecurityCode(e.target.value.toUpperCase())} maxLength={6} className="w-full pl-10 pr-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-slate-100 focus:border-slate-400 transition-all font-black text-center text-lg tracking-[0.3em] text-slate-800 outline-none uppercase placeholder:tracking-normal placeholder:font-medium placeholder:text-left text-xs" />
                     </div>
-                    {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
-                    <div className="pt-2"><button type="submit" disabled={securityCode.length < 4 || !memberName.trim() || loading} className="w-full py-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 active:scale-95">{loading ? <Loader2 className="animate-spin" size={20} /> : 'Request Access'}</button></div>
+                    {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-2.5 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
+                    <div className="pt-1"><button type="submit" disabled={securityCode.length < 4 || !memberName.trim() || loading} className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-slate-900/10 active:scale-95">{loading ? <Loader2 className="animate-spin" size={16} /> : 'Request Access'}</button></div>
                   </form>
                 )}
               </motion.div>

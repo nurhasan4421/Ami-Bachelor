@@ -98,6 +98,7 @@ export default function App() {
   const [showAllAvail, setShowAllAvail] = useState(false);
   const [openTimelineMenuId, setOpenTimelineMenuId] = useState<string | null>(null);
   const [showInstallPwa, setShowInstallPwa] = useState(false);
+  const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
 
   // 🌟 NEW: Apple-Style Notification Banner & Dialog States
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -1084,16 +1085,16 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center relative">
-          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-36 h-auto md:w-44 mx-auto object-contain hover:scale-105 transition-transform mb-3" />
-          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mb-8">@NURHASAN4421</p>
+        <div className="w-full max-w-[280px] sm:max-w-[300px] text-center relative mx-auto">
+          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform mb-2" />
+          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mb-6">@NURHASAN4421</p>
           
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border border-[#d6d6d6] bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm transition-all shadow-xs active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border border-[#d6d6d6] bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs transition-all shadow-xs active:scale-98 cursor-pointer"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
@@ -1410,28 +1411,33 @@ export default function App() {
             {activeView === 'timeline' && (
               <div className="flex flex-col gap-[16px]">
                 {/* Hero Month Card */}
-                <section className="flex items-center justify-between rounded-[24px] bg-[linear-gradient(113.5deg,#212121_0.77%,#000_100%)] px-[23px] py-[20px] text-[#e5e6e1] shadow-xl">
-                  <h2 className="font-sf-bold text-2xl text-white">
-                    {currentMonthObj?.name || 'Current Month'}
-                  </h2>
-                  <div className="flex items-center gap-2">
+                <section className="relative rounded-[24px] bg-[linear-gradient(113.5deg,#212121_0.77%,#000_100%)] p-[20px] text-[#e5e6e1] shadow-xl">
+                  <div className="flex flex-col gap-2.5 pr-14 text-left">
+                    <h2 className="font-sf-bold text-2xl text-white">
+                      {currentMonthObj?.name || 'Current Month'}
+                    </h2>
                     {effectiveIsManager && (
-                      <button
-                        onClick={handleAddMonth}
-                        className="flex h-[26px] items-center rounded-full px-[10px] font-sf-medium text-[11px] leading-none transition-all whitespace-nowrap shadow-xs bg-white text-[#141414] hover:bg-slate-100 cursor-pointer"
-                      >
-                        <span>New Month</span>
-                        <span className="ml-1.5 flex h-[15px] w-[15px] items-center justify-center rounded-[3px] text-[10px] font-bold leading-none bg-[#ff0000] text-white">
-                          +
-                        </span>
-                      </button>
+                      <div>
+                        <button
+                          onClick={handleAddMonth}
+                          className="inline-flex h-[28px] items-center rounded-full px-[12px] font-sf-medium text-[11px] leading-none transition-all whitespace-nowrap shadow-xs bg-white text-[#141414] hover:bg-slate-100 cursor-pointer"
+                        >
+                          <span>New Month</span>
+                          <span className="ml-1.5 flex h-[15px] w-[15px] items-center justify-center rounded-[3px] text-[10px] font-bold leading-none bg-[#ff0000] text-white">
+                            +
+                          </span>
+                        </button>
+                      </div>
                     )}
+                  </div>
+                  {/* Download button aligned to bottom right, little bigger */}
+                  <div className="absolute bottom-4 right-5">
                     <button
                       onClick={handleExportMonthPDF}
-                      className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-[#141414] hover:bg-slate-100 transition-colors cursor-pointer shadow-xs"
+                      className="flex h-[36px] w-[36px] items-center justify-center rounded-full bg-white text-[#141414] hover:bg-slate-100 transition-colors cursor-pointer shadow-md"
                       title="Export Month PDF"
                     >
-                      <Download size={13} />
+                      <Download size={18} />
                     </button>
                   </div>
                 </section>
@@ -1442,7 +1448,7 @@ export default function App() {
                     .sort((a, b) => Number(b) - Number(a))
                     .map((year) => (
                       <div key={year} className="space-y-3">
-                        <h4 className="font-sf-bold text-base text-[#141414] border-b border-[#d6d6d6] pb-2">
+                        <h4 className="font-sf-bold text-base text-[#141414] border-b border-[#d6d6d6] pb-2 text-left">
                           Year {year}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1451,7 +1457,7 @@ export default function App() {
                             return (
                               <div
                                 key={m.id}
-                                className={`flex items-center justify-between p-4 rounded-[16px] border transition-all ${
+                                className={`flex items-center justify-between p-3.5 sm:p-4 rounded-[16px] border transition-all gap-2 ${
                                   isSelected
                                     ? 'bg-white border-red-400 shadow-md ring-1 ring-red-400/30'
                                     : 'bg-[#f3f3f1] border-[#d6d6d6] hover:bg-white'
@@ -1462,27 +1468,27 @@ export default function App() {
                                     setActiveMonthId(m.id);
                                     showToast(`Viewing data for ${m.name}`);
                                   }}
-                                  className="flex items-center gap-3 cursor-pointer flex-1"
+                                  className="flex items-center gap-2.5 sm:gap-3 cursor-pointer flex-1 min-w-0"
                                   title="Click to view this month's data"
                                 >
                                   <div
-                                    className={`p-2 rounded-[10px] ${
+                                    className={`p-2 rounded-[10px] shrink-0 ${
                                       isSelected ? 'bg-red-600 text-white' : 'bg-[#e5e6e1] text-[#626262]'
                                     }`}
                                   >
                                     <Calendar size={18} />
                                   </div>
-                                  <div>
-                                    <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1 text-left">
+                                    <div className="flex flex-wrap items-center gap-1.5">
                                       <p
-                                        className={`font-sf-bold text-sm ${
+                                        className={`font-sf-bold text-sm truncate ${
                                           isSelected ? 'text-[#141414]' : 'text-[#626262]'
                                         }`}
                                       >
                                         {m.name}
                                       </p>
                                       {m.show_actions_to_members && (
-                                        <span className="text-[8px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.2 rounded-full uppercase tracking-wider font-sf-bold">
+                                        <span className="text-[8px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-sf-bold shrink-0">
                                           Current Active
                                         </span>
                                       )}
@@ -1503,14 +1509,14 @@ export default function App() {
                                 </div>
 
                                 {effectiveIsManager && (
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 shrink-0">
                                     {!m.show_actions_to_members && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleSetGlobalActiveMonth(m);
                                         }}
-                                        className="px-2.5 py-1 text-[10px] font-sf-bold bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-[8px] transition-colors shadow-xs cursor-pointer"
+                                        className="px-2.5 py-1 text-[10px] font-sf-bold bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-[8px] transition-colors shadow-xs cursor-pointer shrink-0"
                                         title="Set as current active month for all members"
                                       >
                                         Set Active
@@ -1522,30 +1528,32 @@ export default function App() {
                                           e.stopPropagation();
                                           setOpenTimelineMenuId(openTimelineMenuId === m.id ? null : m.id);
                                         }}
-                                        className="p-1.5 text-[#626262] hover:bg-black/5 rounded-[8px]"
+                                        className="p-1.5 text-[#626262] hover:bg-black/5 rounded-[8px] cursor-pointer"
                                       >
                                         <MoreVertical size={16} />
                                       </button>
 
                                       {openTimelineMenuId === m.id && (
-                                        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#d6d6d6] shadow-xl rounded-[12px] z-50 p-1 flex flex-col">
-                                          <button
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              handleSetGlobalActiveMonth(m);
-                                              setOpenTimelineMenuId(null);
-                                            }}
-                                            className="text-left px-3 py-1.5 text-xs font-sf-bold text-red-600 hover:bg-red-50 rounded-[6px]"
-                                          >
-                                            Set as Active for Members
-                                          </button>
+                                        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#d6d6d6] shadow-xl rounded-[12px] z-50 p-1 flex flex-col text-left">
+                                          {!m.show_actions_to_members && (
+                                            <button
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                handleSetGlobalActiveMonth(m);
+                                                setOpenTimelineMenuId(null);
+                                              }}
+                                              className="text-left px-3 py-1.5 text-xs font-sf-bold text-red-600 hover:bg-red-50 rounded-[6px] cursor-pointer"
+                                            >
+                                              Set as Active for Members
+                                            </button>
+                                          )}
                                           <button
                                             onMouseDown={(e) => {
                                               e.preventDefault();
                                               handleRenameMonth(m);
                                               setOpenTimelineMenuId(null);
                                             }}
-                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px] cursor-pointer"
                                           >
                                             Rename
                                           </button>
@@ -1555,7 +1563,7 @@ export default function App() {
                                               handleCloneMonth(m);
                                               setOpenTimelineMenuId(null);
                                             }}
-                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px]"
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-[#141414] hover:bg-[#f3f3f1] rounded-[6px] cursor-pointer"
                                           >
                                             Clone Month
                                           </button>
@@ -1565,7 +1573,7 @@ export default function App() {
                                               handleDeleteTimelineMonth(m.id);
                                               setOpenTimelineMenuId(null);
                                             }}
-                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-red-600 hover:bg-red-50 rounded-[6px]"
+                                            className="text-left px-3 py-1.5 text-xs font-sf-medium text-red-600 hover:bg-red-50 rounded-[6px] cursor-pointer"
                                           >
                                             Delete
                                           </button>
@@ -1786,25 +1794,20 @@ export default function App() {
                   </div>
                 </section>
 
-                {/* Today's Bazar Checklist Card */}
-                <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-4">
+                {/* Today's Grocery List Card */}
+                <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-red-50 p-2 rounded-[10px] text-red-600">
-                        <ShoppingBag size={18} />
-                      </div>
-                      <div>
-                        <h3 className="font-sf-bold text-base text-[#141414]">Today's Bazar Checklist</h3>
-                        <p className="font-sf-regular text-[10px] text-[#626262]">
-                          {new Date(scheduleDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}
-                        </p>
-                      </div>
+                    <div className="flex flex-col text-left">
+                      <p className="font-sf-medium text-[11px] text-[#626262]">
+                        {new Date(scheduleDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                      <h3 className="font-sf-bold text-base text-[#141414]">Today's Grocery List</h3>
                     </div>
                     <input
                       type="date"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
-                      className="text-xs font-sf-medium text-[#141414] bg-white p-2 rounded-[10px] border border-[#d6d6d6] outline-none"
+                      className="text-[11px] font-sf-medium text-[#141414] bg-white px-2 py-1 rounded-[8px] border border-[#d6d6d6] outline-none cursor-pointer"
                     />
                   </div>
 
@@ -1814,14 +1817,14 @@ export default function App() {
                       value={newBazarItem}
                       onChange={(e) => setNewBazarItem(e.target.value)}
                       placeholder="Add grocery item to buy..."
-                      className="flex-1 px-4 py-2.5 bg-white border border-[#d6d6d6] rounded-[30px] font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 placeholder-[#8e8e8e]"
+                      className="flex-1 h-[34px] px-3 py-1 bg-white border border-[#d6d6d6] rounded-xl font-sf-medium text-xs text-[#141414] outline-none focus:border-red-500 transition-all placeholder-[#8e8e8e]"
                     />
                     <button
                       type="submit"
                       disabled={!newBazarItem.trim()}
-                      className="bg-red-600 text-white px-5 py-2.5 rounded-[30px] font-sf-semibold text-xs hover:bg-red-700 disabled:opacity-40 transition-all shadow-md shadow-red-600/20"
+                      className="h-[34px] bg-red-600 text-white px-3.5 rounded-xl font-sf-semibold text-xs hover:bg-red-700 disabled:opacity-40 transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <Plus size={16} className="inline mr-1" /> Add
+                      <Plus size={14} /> <span>Add</span>
                     </button>
                   </form>
 
@@ -2185,7 +2188,7 @@ export default function App() {
                   </div>
                 </section>
 
-                {/* Minimalist Telegram Bot Section */}
+                {/* Minimalist ManagerBro Section */}
                 <div className="relative rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6]">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -2194,7 +2197,7 @@ export default function App() {
                       </div>
                       <div>
                         <h4 className="font-sf-bold text-[14px] text-[#141414] flex items-center gap-1.5">
-                          Telegram bot
+                          ManagerBro
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                             currentMonthObj?.hostels?.bot_enabled
                               ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
@@ -2210,8 +2213,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowTelegramInfoOverlay(!showTelegramInfoOverlay)}
-                      className="w-7 h-7 rounded-full bg-white hover:bg-slate-100 border border-[#d6d6d6] text-[#626262] flex items-center justify-center transition-colors shadow-xs"
-                      title="Telegram bot info"
+                      className="w-7 h-7 rounded-full bg-white hover:bg-slate-100 border border-[#d6d6d6] text-[#626262] flex items-center justify-center transition-colors shadow-xs cursor-pointer"
+                      title="ManagerBro info"
                     >
                       <Info size={15} />
                     </button>
@@ -2230,52 +2233,53 @@ export default function App() {
 
                       <div className="mt-3 pt-2.5 border-t border-slate-200 text-center">
                         <p className="text-xs font-sf-bold text-slate-700">
-                          Contact <a href="https://t.me/nurhasan4421" target="_blank" rel="noreferrer" className="text-[#229ED9] underline">@nurhasan4421</a> to unlock bot
+                          Contact <a href="https://t.me/nurhasan4421" target="_blank" rel="noreferrer" className="text-[#229ED9] underline">@nurhasan4421</a> to unlock ManagerBro
                         </p>
                       </div>
                     </div>
                   ) : (
-                    /* Active Bot Controls */
-                    <div className="p-3 bg-white rounded-[16px] border border-[#d6d6d6] flex flex-col sm:flex-row items-center justify-between gap-3">
+                    /* Active Bot Controls in White Card */
+                    <div className="relative p-4 bg-white rounded-[16px] border border-[#d6d6d6] text-left">
+                      {/* Open Bot at top right with Bot + icon */}
+                      <a
+                        href="https://t.me/Amibachelorbot"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute top-3.5 right-3.5 px-2.5 py-1 bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] border border-[#229ED9]/30 rounded-[8px] text-[11px] font-sf-bold transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Bot size={13} />
+                        <span>Bot</span>
+                        <ArrowRight size={10} className="-rotate-45" />
+                      </a>
+
                       <div>
-                        <span className="font-sf-regular text-[9px] text-[#626262] uppercase tracking-wider block">
+                        <span className="font-sf-regular text-[9px] text-[#626262] uppercase tracking-wider block mb-1">
                           Bot Connect Code
                         </span>
-                        <span className="font-sf-bold text-lg text-[#229ED9] tracking-[0.12em] font-mono">
-                          {currentMonthObj?.hostels?.telegram_link_code || 'TG-XXXXXX'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <button
-                          onClick={handleCopyTelegramCode}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-[#229ED9] hover:bg-[#1f8fc4] text-white rounded-[10px] text-xs font-sf-bold transition-all shadow-sm active:scale-95"
-                          title="Copy /link command"
-                        >
-                          {copiedTelegramCode ? <Check size={14} /> : <Copy size={14} />}
-                          <span>{copiedTelegramCode ? 'Copied /link' : 'Copy /link'}</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <span className="font-sf-bold text-lg text-[#229ED9] tracking-[0.12em] font-mono">
+                            {currentMonthObj?.hostels?.telegram_link_code || 'TG-XXXXXX'}
+                          </span>
+                          <button
+                            onClick={handleCopyTelegramCode}
+                            className="p-1.5 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] rounded-[8px] transition-all cursor-pointer"
+                            title="Copy code"
+                          >
+                            {copiedTelegramCode ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                          </button>
+                        </div>
 
                         {effectiveIsManager && (
                           <button
                             onClick={handleRegenerateTelegramCode}
                             disabled={regeneratingTelegram}
-                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-[#444] rounded-[10px] text-xs font-sf-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                            title="Regenerate code"
+                            className="flex items-center gap-1.5 text-[11px] font-sf-medium text-slate-500 hover:text-slate-800 transition-colors mt-2.5 cursor-pointer disabled:opacity-50"
+                            title="Generate new connect code"
                           >
-                            <RotateCcw size={14} className={regeneratingTelegram ? 'animate-spin' : ''} />
-                            <span className="hidden sm:inline">Regenerate</span>
+                            <RotateCcw size={12} className={regeneratingTelegram ? 'animate-spin' : ''} />
+                            <span>New Code</span>
                           </button>
                         )}
-
-                        <a
-                          href="https://t.me/Amibachelorbot"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-2 bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] border border-[#229ED9]/30 rounded-[10px] text-xs font-sf-bold transition-colors flex items-center gap-1"
-                        >
-                          Open Bot ↗
-                        </a>
                       </div>
                     </div>
                   )}
@@ -2290,17 +2294,17 @@ export default function App() {
                       <div className="absolute right-4 top-14 z-50 w-[290px] rounded-[18px] bg-white p-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 text-[#141414]">
                         <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2.5">
                           <h5 className="font-sf-bold text-xs flex items-center gap-1.5">
-                            <Bot size={14} className="text-[#229ED9]" /> What Telegram Bot Does
+                            <Bot size={14} className="text-[#229ED9]" /> What ManagerBro Does
                           </h5>
                           <button
                             type="button"
                             onClick={() => setShowTelegramInfoOverlay(false)}
-                            className="text-slate-400 hover:text-slate-700"
+                            className="text-slate-400 hover:text-slate-700 cursor-pointer"
                           >
                             <X size={14} />
                           </button>
                         </div>
-                        <div className="space-y-2 text-[11px] text-[#4a4a4a]">
+                        <div className="space-y-2 text-[11px] text-[#4a4a4a] text-left">
                           <p className="flex items-start gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#229ED9] mt-1 shrink-0"></span>
                             <span><strong>1. Connect:</strong> Open <a href="https://t.me/Amibachelorbot" target="_blank" rel="noreferrer" className="text-[#229ED9] font-bold underline">@Amibachelorbot</a> and send <code>/link &lt;CODE&gt;</code></span>
@@ -2323,23 +2327,23 @@ export default function App() {
                 </div>
 
                 {/* Account & Mode Control Card */}
-                <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-4">
-                  <h3 className="font-sf-bold text-base text-[#141414]">Account & Mode Control</h3>
-                  <div className="p-3 bg-white rounded-[14px] border border-[#d6d6d6] flex items-center justify-between">
+                <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-3.5">
+                  <h3 className="font-sf-bold text-base text-[#141414] text-left">Account & Mode Control</h3>
+                  <div className="p-3.5 bg-white rounded-[14px] border border-[#d6d6d6] space-y-2.5 text-left">
                     <div>
                       <p className="font-sf-regular text-[9px] text-[#626262] uppercase tracking-wider">
                         Signed In User
                       </p>
-                      <p className="font-sf-bold text-sm text-[#141414]">
+                      <p className="font-sf-medium text-xs text-[#141414] truncate">
                         {session?.user?.email || 'nurhasan@gmail.com'}
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setViewMode('manager')}
-                        className={`px-3 py-1.5 rounded-[30px] font-sf-bold text-xs transition-all ${
+                        className={`px-3 py-1 rounded-[8px] font-sf-bold text-xs h-[30px] flex items-center transition-all cursor-pointer ${
                           viewMode === 'manager'
-                            ? 'bg-red-600 text-white shadow-sm'
+                            ? 'bg-red-600 text-white shadow-xs'
                             : 'bg-[#f3f3f1] text-[#626262] border border-[#d6d6d6]'
                         }`}
                       >
@@ -2347,9 +2351,9 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setViewMode('member')}
-                        className={`px-3 py-1.5 rounded-[30px] font-sf-bold text-xs transition-all ${
+                        className={`px-3 py-1 rounded-[8px] font-sf-bold text-xs h-[30px] flex items-center transition-all cursor-pointer ${
                           viewMode === 'member'
-                            ? 'bg-red-600 text-white shadow-sm'
+                            ? 'bg-red-600 text-white shadow-xs'
                             : 'bg-[#f3f3f1] text-[#626262] border border-[#d6d6d6]'
                         }`}
                       >
@@ -2365,9 +2369,9 @@ export default function App() {
                       localStorage.removeItem('activeMonthId');
                       setActiveMonthId(null);
                     }}
-                    className="w-full py-3 bg-white hover:bg-slate-50 text-[#141414] border border-[#d6d6d6] rounded-[14px] font-sf-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                    className="w-full py-2.5 bg-white hover:bg-slate-50 text-[#141414] border border-[#d6d6d6] rounded-[12px] font-sf-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
                   >
-                    <RotateCcw size={15} className="text-[#626262]" />
+                    <RotateCcw size={14} className="text-[#626262]" />
                     <span>Back to Setup</span>
                   </button>
                 </div>
@@ -2407,31 +2411,45 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Danger Zone */}
+                {/* Danger Zone Collapsible */}
                 {effectiveIsManager && (
-                  <div className="rounded-[24px] bg-[#dedfd9] p-[20px] border border-red-300 space-y-3">
-                    <h3 className="font-sf-bold text-base text-red-600">Danger Zone</h3>
+                  <div className="rounded-[24px] bg-[#dedfd9] p-[20px] border border-red-300">
                     <button
-                      onClick={handleResetData}
-                      className="w-full py-3 bg-white text-red-600 hover:bg-red-50 border border-red-200 rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-sm transition-all"
+                      type="button"
+                      onClick={() => setIsDangerZoneOpen(!isDangerZoneOpen)}
+                      className="w-full flex items-center justify-between font-sf-bold text-base text-red-600 cursor-pointer"
                     >
-                      <RotateCcw size={15} className="inline mr-2" /> Reset Month Data to Zero
+                      <span>Danger Zone</span>
+                      <ChevronDown
+                        size={18}
+                        className={`transition-transform duration-200 ${isDangerZoneOpen ? 'rotate-180' : ''}`}
+                      />
                     </button>
-                    {session?.user?.id === currentMonthObj?.owner_id && (
-                      <>
+                    {isDangerZoneOpen && (
+                      <div className="space-y-3 pt-3 mt-3 border-t border-red-200">
                         <button
-                          onClick={handleDeleteCurrentMonth}
-                          className="w-full py-3 bg-white text-red-600 hover:bg-red-50 border border-red-200 rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-sm transition-all"
+                          onClick={handleResetData}
+                          className="w-full py-3 bg-white text-red-600 hover:bg-red-50 border border-red-200 rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
                         >
-                          <Trash2 size={15} className="inline mr-2" /> Delete Entire Month
+                          <RotateCcw size={15} className="inline mr-2" /> Reset Month Data to Zero
                         </button>
-                        <button
-                          onClick={handleDeleteHostel}
-                          className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-md shadow-red-600/20 transition-all"
-                        >
-                          <X size={15} className="inline mr-2" /> Delete Workspace
-                        </button>
-                      </>
+                        {session?.user?.id === currentMonthObj?.owner_id && (
+                          <>
+                            <button
+                              onClick={handleDeleteCurrentMonth}
+                              className="w-full py-3 bg-white text-red-600 hover:bg-red-50 border border-red-200 rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                            >
+                              <Trash2 size={15} className="inline mr-2" /> Delete Entire Month
+                            </button>
+                            <button
+                              onClick={handleDeleteHostel}
+                              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-[12px] font-sf-bold text-xs uppercase tracking-wider shadow-md shadow-red-600/20 transition-all cursor-pointer"
+                            >
+                              <X size={15} className="inline mr-2" /> Delete Hostel
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
