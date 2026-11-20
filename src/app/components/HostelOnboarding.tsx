@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../supabaseClient';
-import { Building, KeyRound, ArrowLeft, Loader2, Copy, Check, UserCircle, ShieldCheck, Eye, AlertCircle, Trash2, Clock } from 'lucide-react';
+import { Building, KeyRound, ArrowLeft, Loader2, Copy, Check, UserCircle, ShieldCheck, Eye, AlertCircle, Trash2, Clock, LogOut } from 'lucide-react';
 
 interface HostelData { 
   id: number | string; 
@@ -13,11 +13,27 @@ interface HostelData {
   rejection_reason?: string;
   transaction_id?: string;
 }
-interface HostelOnboardingProps { session: any; managedHostels?: HostelData[]; joinedHostels?: HostelData[]; onJoined: (id: string) => void; }
+interface HostelOnboardingProps { 
+  session: any; 
+  managedHostels?: HostelData[]; 
+  joinedHostels?: HostelData[]; 
+  onJoined: (id: string) => void; 
+  isSuperAdmin?: boolean;
+  onOpenSuperAdmin?: () => void;
+  onLogout?: () => void;
+}
 
 const MAX_HOSTELS = 3;
 
-export function HostelOnboarding({ session, managedHostels = [], joinedHostels = [], onJoined }: HostelOnboardingProps) {
+export function HostelOnboarding({ 
+  session, 
+  managedHostels = [], 
+  joinedHostels = [], 
+  onJoined,
+  isSuperAdmin,
+  onOpenSuperAdmin,
+  onLogout
+}: HostelOnboardingProps) {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
   const [hostelName, setHostelName] = useState('');
   const [managerName, setManagerName] = useState('');
@@ -149,113 +165,136 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 py-2 font-sans">
-      <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto">
-        {/* Back button on top of logo like logout Y-axis height */}
-        {mode !== 'select' && (
-          <div className="w-full flex items-center justify-start mb-2">
+    <div className="flex flex-col min-h-screen font-sans">
+      {/* Top Header Bar at exact same Y-axis position */}
+      <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
+        {mode === 'select' ? (
+          <>
+            {isSuperAdmin ? (
+              <button
+                onClick={onOpenSuperAdmin}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-sf-black rounded-[30px] transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+              >
+                <ShieldCheck size={18} /> Super Admin Panel
+              </button>
+            ) : <div />}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-sf-bold rounded-[30px] border border-red-200 hover:bg-red-100 transition-all cursor-pointer"
+              >
+                <LogOut size={16} /> Logout
+              </button>
+            )}
+          </>
+        ) : (
+          <>
             <button 
               onClick={() => { setMode('select'); setError(''); setJoinSuccessMsg(''); }} 
               className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer py-1 px-1 -ml-1"
             >
               <ArrowLeft size={16} /> <span>Back</span>
             </button>
-          </div>
+            <div />
+          </>
         )}
+      </div>
 
-        <div className="text-center mb-5">
-          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />
-          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-3">@NURHASAN4421</p>
-        </div>
+      <div className="flex flex-col items-center justify-center flex-1 px-4 pb-8">
+        <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto">
+          <div className="text-center mb-5">
+            <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />
+            <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-3">@NURHASAN4421</p>
+          </div>
 
-        <div className="w-full relative min-h-[320px] flex flex-col justify-center">
-          <AnimatePresence mode="wait">
-            {mode === 'select' && (
-              <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
-                {(managedHostels.length > 0 || joinedHostels.length > 0) && (
-                  <div className="space-y-2.5">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left pl-1 mb-2">Your Hostels</p>
-                    {managedHostels.map(h => {
-                      const isPending = h.status === 'pending';
-                      const isRejected = h.status === 'rejected';
-                      const isDeactivated = h.status === 'deactivated';
+          <div className="w-full relative min-h-[320px] flex flex-col justify-center">
+            <AnimatePresence mode="wait">
+              {mode === 'select' && (
+                <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
+                  {(managedHostels.length > 0 || joinedHostels.length > 0) && (
+                    <div className="space-y-2.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left pl-1 mb-2">Your Hostels</p>
+                      {managedHostels.map(h => {
+                        const isPending = h.status === 'pending';
+                        const isRejected = h.status === 'rejected';
+                        const isDeactivated = h.status === 'deactivated';
 
-                      return (
-                        <div key={h.id} className={`w-full flex items-center justify-between p-2 pl-3 pr-2 rounded-xl transition-all border ${
-                          isPending 
-                            ? 'bg-amber-50/70 border-amber-200' 
-                            : isRejected 
-                            ? 'bg-red-50/70 border-red-200' 
-                            : isDeactivated
-                            ? 'bg-slate-100/80 border-slate-200 opacity-75'
-                            : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200'
-                        } group`}>
-                          <button 
-                            disabled={isPending || isDeactivated}
-                            onClick={() => onJoined(h.latestMonthId)} 
-                            className="flex items-center gap-2.5 flex-1 text-left disabled:cursor-not-allowed"
-                          >
-                            <div className={`p-1.5 rounded-lg ${
-                              isPending 
-                                ? 'bg-amber-100 text-amber-700' 
-                                : isRejected
-                                ? 'bg-red-100 text-red-600'
-                                : 'bg-blue-100 text-blue-600'
-                            }`}>
-                              {isPending ? <Clock size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-black text-xs text-slate-800 truncate">{h.name}</p>
-                                {isPending && (
-                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-900 animate-pulse shrink-0">
-                                    Pending
-                                  </span>
-                                )}
-                                {isRejected && (
-                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-red-200 text-red-800 shrink-0">
-                                    Rejected
-                                  </span>
-                                )}
+                        return (
+                          <div key={h.id} className={`w-full flex items-center justify-between p-2 pl-3 pr-2 rounded-xl transition-all border ${
+                            isPending 
+                              ? 'bg-amber-50/70 border-amber-200' 
+                              : isRejected 
+                              ? 'bg-red-50/70 border-red-200' 
+                              : isDeactivated
+                              ? 'bg-slate-100/80 border-slate-200 opacity-75'
+                              : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200'
+                          } group`}>
+                            <button 
+                              disabled={isPending || isDeactivated}
+                              onClick={() => onJoined(h.latestMonthId)} 
+                              className="flex items-center gap-2.5 flex-1 text-left disabled:cursor-not-allowed"
+                            >
+                              <div className={`p-1.5 rounded-lg ${
+                                isPending 
+                                  ? 'bg-amber-100 text-amber-700' 
+                                  : isRejected
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-blue-100 text-blue-600'
+                              }`}>
+                                {isPending ? <Clock size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
                               </div>
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                                {isPending ? 'Awaiting Approval' : isRejected ? (h.rejection_reason || 'Rejected') : 'Manager'}
-                              </p>
-                            </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-black text-xs text-slate-800 truncate">{h.name}</p>
+                                  {isPending && (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-900 animate-pulse shrink-0">
+                                      Pending
+                                    </span>
+                                  )}
+                                  {isRejected && (
+                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-red-200 text-red-800 shrink-0">
+                                      Rejected
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                                  {isPending ? 'Awaiting Approval' : isRejected ? (h.rejection_reason || 'Rejected') : 'Manager'}
+                                </p>
+                              </div>
+                            </button>
+                            <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete Hostel"><Trash2 size={14} /></button>
+                          </div>
+                        );
+                      })}
+                      {joinedHostels.map(h => (
+                        <div key={h.id} className="w-full flex items-center justify-between p-2 pl-3 pr-2 bg-white hover:bg-emerald-50 rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group">
+                          <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-2.5 flex-1 text-left cursor-pointer">
+                            <div className="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg"><Eye size={16} /></div>
+                            <div><p className="font-black text-xs text-slate-800">{h.name}</p><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Member</p></div>
                           </button>
-                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Delete Hostel"><Trash2 size={14} /></button>
+                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Leave Hostel"><Trash2 size={14} /></button>
                         </div>
-                      );
-                    })}
-                    {joinedHostels.map(h => (
-                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-3 pr-2 bg-white hover:bg-emerald-50 rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group">
-                        <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-2.5 flex-1 text-left cursor-pointer">
-                          <div className="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg"><Eye size={16} /></div>
-                          <div><p className="font-black text-xs text-slate-800">{h.name}</p><p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Member</p></div>
-                        </button>
-                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Leave Hostel"><Trash2 size={14} /></button>
-                      </div>
-                    ))}
-                    <div className="w-full h-px bg-slate-200 my-3"></div>
-                  </div>
-                )}
-                <div className="space-y-3">
-                  {/* Outlined Join Hostel Button */}
-                  <button 
-                    onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} 
-                    disabled={!canJoin} 
-                    className="w-full py-3 bg-transparent hover:bg-slate-100 text-slate-800 border-2 border-slate-800 rounded-xl font-black text-sm active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Join Hostel
-                  </button>
-                  <div className="text-center">
-                    <button onClick={() => { setMode('create'); setError(''); }} disabled={!canCreate} className="text-xs font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
-                      {canCreate ? 'Create New Hostel' : `Create limit reached (${MAX_HOSTELS})`}
+                      ))}
+                      <div className="w-full h-px bg-slate-200 my-3"></div>
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    {/* Filled Red Join Hostel Button with same width as phone sign-in */}
+                    <button 
+                      onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} 
+                      disabled={!canJoin} 
+                      className="w-full max-w-[280px] mx-auto py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-600/20 active:scale-98 transition-all flex items-center justify-center cursor-pointer disabled:opacity-50"
+                    >
+                      Join Hostel
                     </button>
+                    <div className="text-center">
+                      <button onClick={() => { setMode('create'); setError(''); }} disabled={!canCreate} className="text-xs font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
+                        {canCreate ? 'Create New Hostel' : `Create limit reached (${MAX_HOSTELS})`}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
             {mode === 'create' && (
               <motion.div key="create" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -388,5 +427,6 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

@@ -1238,26 +1238,13 @@ export default function App() {
         />
       ) : !activeMonthId ? (
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
-          <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
-            {isSuperAdmin ? (
-              <button
-                onClick={() => setActiveView('super-admin')}
-                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-sf-black rounded-[30px] transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
-              >
-                <ShieldCheck size={18} /> Super Admin Panel
-              </button>
-            ) : <div />}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-xs font-sf-bold rounded-[30px] border border-red-200 hover:bg-red-100 transition-all cursor-pointer"
-            >
-              <LogOut size={16} /> Logout
-            </button>
-          </div>
           <HostelOnboarding
             session={session}
             managedHostels={managedHostels}
             joinedHostels={joinedHostels}
+            isSuperAdmin={isSuperAdmin}
+            onOpenSuperAdmin={() => setActiveView('super-admin')}
+            onLogout={handleLogout}
             onJoined={async (id: string) => {
               setActiveMonthId(id);
               await fetchMonthsAndHostels();
