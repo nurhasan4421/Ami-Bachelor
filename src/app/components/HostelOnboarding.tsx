@@ -181,7 +181,7 @@ export function HostelOnboarding({
   };
 
   return (
-    <div className="flex flex-col min-h-dvh font-sans">
+    <div className="flex flex-col min-h-dvh font-sans pt-[env(safe-area-inset-top,0px)]">
       {/* Top Header Bar at exact same Y-axis position */}
       <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
         {mode === 'select' ? (

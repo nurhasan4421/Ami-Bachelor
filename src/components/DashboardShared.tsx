@@ -403,7 +403,7 @@ export function DashboardHeader({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1]/95 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1]/95 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[900px]">
         {/* Brand / Logo */}
         <div
@@ -788,7 +788,7 @@ export function DashboardHeader({
         )}
       </header>
       {/* Spacer so content does not get hidden under fixed header */}
-      <div className="h-[64px] mb-[16px] shrink-0 pointer-events-none" aria-hidden="true" />
+      <div className="h-[calc(64px+env(safe-area-inset-top,0px))] mb-[16px] shrink-0 pointer-events-none" aria-hidden="true" />
     </>
   );
 }
