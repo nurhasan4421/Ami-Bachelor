@@ -14,7 +14,6 @@ import MemberPage from '@/components/MemberPage';
 import AdminPage from '@/components/AdminPage';
 import { DashboardHeader, type DashboardView } from '@/components/DashboardShared';
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
-import { PullToRefresh } from '@/components/PullToRefresh';
 import SuperAdminPage from '@/components/SuperAdminPage';
 import { AboutPage } from '@/components/AboutPage';
 import { showPhonePushNotification } from '@/lib/pushNotifications';
@@ -106,6 +105,14 @@ export default function App() {
   const activeMonthGraceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 🌟 NEW: Apple-Style Notification Banner & Dialog States
+  const [staySignedIn, setStaySignedIn] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('ami_stay_signed_in');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [dialog, setDialog] = useState<{
     isOpen: boolean;
@@ -175,14 +182,38 @@ export default function App() {
       console.error("Error signing out:", e);
     }
     setSession(null);
-    localStorage.removeItem('activeMonthId');
-    localStorage.removeItem('ami_active_view');
+    try {
+      sessionStorage.removeItem('ami_session_active');
+      localStorage.removeItem('activeMonthId');
+      localStorage.removeItem('ami_active_view');
+    } catch (e) {
+      console.warn("Storage cleanup error:", e);
+    }
   };
 
   useEffect(() => {
+    // If user explicitly unchecked "Stay signed in", check if this is a fresh launch
+    try {
+      const staySignedInPref = localStorage.getItem('ami_stay_signed_in');
+      if (staySignedInPref === 'false') {
+        const isSessionActive = sessionStorage.getItem('ami_session_active');
+        if (!isSessionActive) {
+          // User closed tab/app earlier and chose not to stay signed in -> auto logout
+          handleLogout();
+          setLoadingAuth(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Auth persistence check warning:", e);
+    }
+
     supabase.auth.getSession().then(({ data, error }: any) => {
       if (!error && data?.session) {
         setSession(data.session);
+        try {
+          sessionStorage.setItem('ami_session_active', 'true');
+        } catch {}
       }
       setLoadingAuth(false);
     });
@@ -192,6 +223,9 @@ export default function App() {
         setSession(null);
       } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
         setSession(session);
+        try {
+          sessionStorage.setItem('ami_session_active', 'true');
+        } catch {}
       } else if (event === 'PASSWORD_RECOVERY') {
         // If password is being reset, log out current session for security
         handleLogout();
@@ -215,6 +249,50 @@ export default function App() {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+  // Auto-logout if user chose NOT to stay signed in and becomes inactive
+  useEffect(() => {
+    if (!session) return;
+    try {
+      const staySignedInPref = localStorage.getItem('ami_stay_signed_in');
+      if (staySignedInPref === 'true') return; // User opted to stay signed in permanently
+    } catch {
+      return;
+    }
+
+    const INACTIVITY_LIMIT_MS = 15 * 60 * 1000; // 15 minutes
+    let timeoutId: any;
+    let lastActive = Date.now();
+
+    const resetInactivity = () => {
+      lastActive = Date.now();
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleLogout();
+      }, INACTIVITY_LIMIT_MS);
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        if (Date.now() - lastActive > INACTIVITY_LIMIT_MS) {
+          handleLogout();
+        } else {
+          resetInactivity();
+        }
+      }
+    };
+
+    resetInactivity();
+    const activeEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    activeEvents.forEach(evt => window.addEventListener(evt, resetInactivity, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearTimeout(timeoutId);
+      activeEvents.forEach(evt => window.removeEventListener(evt, resetInactivity));
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [session]);
 
   const logAction = async (action: string) => {
     if (!activeMonthId) return;
@@ -475,25 +553,6 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, [session, activeMonthId, fetchSheetData]);
-
-  const handlePullRefresh = useCallback(async () => {
-    try {
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) {
-          await reg.update();
-          if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("SW update check error:", e);
-    }
-
-    // Native reload so PWA caches, new bundles, and all live data refresh freshly
-    window.location.reload();
-  }, []);
 
   const handleAddBazarItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1177,6 +1236,14 @@ export default function App() {
 
   if (!session) {
     const handleGoogleSignIn = async () => {
+      try {
+        localStorage.setItem('ami_stay_signed_in', staySignedIn ? 'true' : 'false');
+        if (!staySignedIn) {
+          sessionStorage.setItem('ami_session_active', 'true');
+        }
+      } catch (e) {
+        console.warn("Storage save error:", e);
+      }
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -1208,6 +1275,29 @@ export default function App() {
             </svg>
             <span>Sign in with Google</span>
           </button>
+
+          {/* Mini checkbox & text under sign in with Google */}
+          <div className="mt-3 flex items-center justify-center gap-1.5 select-none">
+            <input
+              type="checkbox"
+              id="staySignedIn"
+              checked={staySignedIn}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setStaySignedIn(checked);
+                try {
+                  localStorage.setItem('ami_stay_signed_in', checked ? 'true' : 'false');
+                } catch {}
+              }}
+              className="w-3 h-3 rounded-[3px] border-[#d6d6d6] text-[#141414] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#141414]"
+            />
+            <label
+              htmlFor="staySignedIn"
+              className="text-[11px] font-sf-regular text-[#8e8e8e] hover:text-[#141414] transition-colors cursor-pointer select-none"
+            >
+              Stay signed in
+            </label>
+          </div>
         </div>
       </div>
     );
@@ -1336,12 +1426,6 @@ export default function App() {
       <InstallPwaPrompt 
         forceOpen={showInstallPwa} 
         onDismiss={() => setShowInstallPwa(false)} 
-      />
-
-      {/* Apple-Style Swipe Down Pull-to-Refresh */}
-      <PullToRefresh 
-        onRefresh={handlePullRefresh} 
-        disabled={Boolean(dialog?.isOpen || showFlatmatesModal)} 
       />
 
       {showFlatmatesModal && (
