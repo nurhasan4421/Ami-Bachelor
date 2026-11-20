@@ -99,6 +99,9 @@ export default function App() {
   const [openTimelineMenuId, setOpenTimelineMenuId] = useState<string | null>(null);
   const [showInstallPwa, setShowInstallPwa] = useState(false);
   const [isDangerZoneOpen, setIsDangerZoneOpen] = useState(false);
+  const [showActiveMonthRedirectDialog, setShowActiveMonthRedirectDialog] = useState(false);
+  const activeMonthRedirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeMonthGraceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 🌟 NEW: Apple-Style Notification Banner & Dialog States
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -290,10 +293,60 @@ export default function App() {
 
   const activeHostelId = months.find(m => m.id === activeMonthId)?.hostels?.id;
   const visibleMonthsInHostel = months.filter(m => m.hostels?.id === activeHostelId);
+  const hostelActiveMonth = useMemo(() => {
+    const active = visibleMonthsInHostel.find(m => m.show_actions_to_members === true);
+    return active || visibleMonthsInHostel[0] || null;
+  }, [visibleMonthsInHostel]);
   const currentMonthObj = months.find(m => m.id === activeMonthId);
   const currentHostel = currentMonthObj?.hostels;
   const currentHostelStatus = (currentHostel as any)?.status || 'active';
   const isHostelLocked = currentHostelStatus === 'deactivated' || currentHostelStatus === 'pending' || currentHostelStatus === 'rejected';
+
+  // Monitor when a member is browsing a non-active month (auto redirect after 5m or wait 3m)
+  useEffect(() => {
+    if (activeMonthRedirectTimerRef.current) {
+      clearTimeout(activeMonthRedirectTimerRef.current);
+      activeMonthRedirectTimerRef.current = null;
+    }
+    if (activeMonthGraceTimerRef.current) {
+      clearTimeout(activeMonthGraceTimerRef.current);
+      activeMonthGraceTimerRef.current = null;
+    }
+    setShowActiveMonthRedirectDialog(false);
+
+    // Only apply to members when viewing another month in the hostel
+    if (viewMode === 'member' && hostelActiveMonth && activeMonthId && activeMonthId !== hostelActiveMonth.id) {
+      // 5 minutes timer
+      activeMonthRedirectTimerRef.current = setTimeout(() => {
+        setShowActiveMonthRedirectDialog(true);
+      }, 5 * 60 * 1000);
+    }
+
+    return () => {
+      if (activeMonthRedirectTimerRef.current) clearTimeout(activeMonthRedirectTimerRef.current);
+      if (activeMonthGraceTimerRef.current) clearTimeout(activeMonthGraceTimerRef.current);
+    };
+  }, [activeMonthId, hostelActiveMonth?.id, viewMode]);
+
+  const handleConfirmActiveMonthRedirect = () => {
+    if (hostelActiveMonth) {
+      setActiveMonthId(hostelActiveMonth.id);
+      showToast(`Switched to active month: ${hostelActiveMonth.name}`);
+    }
+    setShowActiveMonthRedirectDialog(false);
+  };
+
+  const handleWaitActiveMonthRedirect = () => {
+    setShowActiveMonthRedirectDialog(false);
+    showToast("Waiting 3 minutes before auto-switching to active month", "info");
+    if (activeMonthGraceTimerRef.current) clearTimeout(activeMonthGraceTimerRef.current);
+    activeMonthGraceTimerRef.current = setTimeout(() => {
+      if (hostelActiveMonth) {
+        setActiveMonthId(hostelActiveMonth.id);
+        showToast(`Auto-switched to active month (${hostelActiveMonth.name})`);
+      }
+    }, 3 * 60 * 1000);
+  };
 
   const monthsByYear = useMemo(() => {
     return visibleMonthsInHostel.reduce((acc, m) => {
@@ -1159,6 +1212,46 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Auto Return to Active Month Prompt for Members */}
+      <AnimatePresence>
+        {showActiveMonthRedirectDialog && hostelActiveMonth && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", duration: 0.4, bounce: 0.3 }}
+              className="bg-white/95 backdrop-blur-xl w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 text-center"
+            >
+              <div className="p-6 pb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                  <Clock size={24} />
+                </div>
+                <h3 className="text-lg font-black text-slate-800 tracking-tight">Return to Active Month?</h3>
+                <p className="text-xs font-medium text-slate-600 mt-2 leading-relaxed">
+                  The hostel manager has set <strong>"{hostelActiveMonth.name}"</strong> as the active month. Would you like to switch to it now?
+                </p>
+              </div>
+              
+              <div className="flex border-t border-slate-200/60 bg-slate-50/50">
+                <button 
+                  onClick={handleWaitActiveMonthRedirect}
+                  className="flex-1 py-3.5 text-xs font-bold text-slate-600 hover:bg-slate-100/50 transition-colors border-r border-slate-200/60 active:bg-slate-200/50 cursor-pointer"
+                >
+                  Wait (3 min)
+                </button>
+                <button 
+                  onClick={handleConfirmActiveMonthRedirect}
+                  className="flex-1 py-3.5 text-xs font-black text-red-600 hover:bg-red-50/50 transition-colors active:bg-red-100/50 cursor-pointer"
+                >
+                  Yes, Switch
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Toast Notification Banner */}
       <AnimatePresence>
         {toast && (
@@ -1441,6 +1534,7 @@ export default function App() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {monthsByYear[year].map((m: MonthSheet) => {
                             const isSelected = activeMonthId === m.id;
+                            const isHostelActive = hostelActiveMonth?.id === m.id;
                             return (
                               <div
                                 key={m.id}
@@ -1474,9 +1568,9 @@ export default function App() {
                                       >
                                         {m.name}
                                       </p>
-                                      {m.show_actions_to_members && (
+                                      {isHostelActive && (
                                         <span className="text-[8px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-sf-bold shrink-0">
-                                          Current Active
+                                          Active
                                         </span>
                                       )}
                                     </div>
@@ -1497,7 +1591,7 @@ export default function App() {
 
                                 {effectiveIsManager && (
                                   <div className="flex items-center gap-1.5 shrink-0">
-                                    {!m.show_actions_to_members && (
+                                    {!isHostelActive && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1522,7 +1616,7 @@ export default function App() {
 
                                       {openTimelineMenuId === m.id && (
                                         <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#d6d6d6] shadow-xl rounded-[12px] z-50 p-1 flex flex-col text-left">
-                                          {!m.show_actions_to_members && (
+                                          {!isHostelActive && (
                                             <button
                                               onMouseDown={(e) => {
                                                 e.preventDefault();

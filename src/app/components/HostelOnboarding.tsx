@@ -39,7 +39,7 @@ export function HostelOnboarding({
   const [managerName, setManagerName] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [paymentPhone, setPaymentPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'bKash' | 'Nagad' | 'Rocket'>('bKash');
+  const [paymentMethod, setPaymentMethod] = useState<string>('');
   const [memberName, setMemberName] = useState('');
   const [securityCode, setSecurityCode] = useState('');
   const [createdData, setCreatedData] = useState<{ id: string; code: string; isPending?: boolean } | null>(null);
@@ -75,6 +75,20 @@ export function HostelOnboarding({
     e.preventDefault();
     if (!canCreate) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} managed hostels.`); return; }
     if (!hostelName.trim() || !managerName.trim()) { setError("Please fill in both the hostel name and your name."); return; }
+    
+    // Validate Bangladeshi phone number format
+    const cleanPhone = paymentPhone.trim().replace(/[-\s]/g, '');
+    const bdPhoneRegex = /^(?:\+?8801|01)[3-9]\d{8}$/;
+    if (!cleanPhone || !bdPhoneRegex.test(cleanPhone)) {
+      setError("Please enter a valid Bangladeshi phone number (e.g. 01712345678).");
+      return;
+    }
+
+    if (!paymentMethod) {
+      setError("Please select a payment method (bKash, Nagad, or Rocket).");
+      return;
+    }
+
     if (!transactionId.trim()) { setError("Please enter your payment Transaction ID (TrxID)."); return; }
     setLoading(true);
     const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -86,7 +100,7 @@ export function HostelOnboarding({
         status: 'pending',
         transaction_id: transactionId.trim().toUpperCase(),
         payment_method: paymentMethod,
-        payment_phone: paymentPhone.trim() || null
+        payment_phone: cleanPhone
       }]).select().single();
       if (hError) throw hError;
 
@@ -201,7 +215,7 @@ export function HostelOnboarding({
       </div>
 
       <div className="flex flex-col items-center justify-center flex-1 px-4 pb-8">
-        <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto">
+        <div className="w-full max-w-[280px] sm:max-w-[300px] mx-auto">
           <div className="text-center mb-5">
             <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />
             <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-3">@NURHASAN4421</p>
@@ -356,9 +370,10 @@ export function HostelOnboarding({
                         <div className="relative shrink-0">
                           <select
                             value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value as any)}
-                            className="h-full px-2.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-slate-800 outline-none cursor-pointer focus:border-blue-400"
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            className="h-full px-2 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-slate-800 outline-none cursor-pointer focus:border-blue-400"
                           >
+                            <option value="" disabled>Select</option>
                             <option value="bKash">bKash</option>
                             <option value="Nagad">Nagad</option>
                             <option value="Rocket">Rocket</option>
@@ -370,7 +385,7 @@ export function HostelOnboarding({
 
                       <button 
                         type="submit" 
-                        disabled={!hostelName.trim() || !managerName.trim() || !transactionId.trim() || loading} 
+                        disabled={!hostelName.trim() || !managerName.trim() || !paymentPhone.trim() || !transactionId.trim() || !paymentMethod || loading} 
                         className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 active:scale-98"
                       >
                         {loading ? <Loader2 className="animate-spin" size={16} /> : 'Create Hostel'}
