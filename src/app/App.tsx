@@ -59,9 +59,15 @@ export default function App() {
   const [isInitialSyncing, setIsInitialSyncing] = useState(true);
   
   const [activeView, setActiveView] = useState<ViewState>(() => {
-    const saved = localStorage.getItem('ami_active_view') as ViewState;
-    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability', 'super-admin', 'about'];
-    return (saved && validViews.includes(saved)) ? saved : 'dashboard';
+    try {
+      // Clean up legacy localStorage so fresh app launches always go to dashboard
+      localStorage.removeItem('ami_active_view');
+      const saved = sessionStorage.getItem('ami_active_view') as ViewState;
+      const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability', 'super-admin', 'about'];
+      return (saved && validViews.includes(saved)) ? saved : 'dashboard';
+    } catch {
+      return 'dashboard';
+    }
   });
 
   const [managedHostels, setManagedHostels] = useState<HostelData[]>([]);
@@ -161,7 +167,9 @@ export default function App() {
   }, [activeMonthId]);
 
   useEffect(() => {
-    if (activeView) localStorage.setItem('ami_active_view', activeView);
+    try {
+      if (activeView) sessionStorage.setItem('ami_active_view', activeView);
+    } catch {}
   }, [activeView]);
 
   useEffect(() => {
@@ -184,6 +192,7 @@ export default function App() {
     setSession(null);
     try {
       sessionStorage.removeItem('ami_session_active');
+      sessionStorage.removeItem('ami_active_view');
       localStorage.removeItem('activeMonthId');
       localStorage.removeItem('ami_active_view');
     } catch (e) {
