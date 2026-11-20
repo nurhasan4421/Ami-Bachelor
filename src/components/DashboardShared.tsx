@@ -405,7 +405,7 @@ export function DashboardHeader({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1] pt-[env(safe-area-inset-top,0px)]">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1] pt-[env(safe-area-inset-top,0px)] transform-gpu">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[900px]">
         {/* Brand / Logo */}
         <div
