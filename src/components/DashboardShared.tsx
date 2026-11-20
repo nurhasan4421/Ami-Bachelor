@@ -41,7 +41,8 @@ export type DashboardView =
   | 'manage-hostel'
   | 'availability'
   | 'settings'
-  | 'super-admin';
+  | 'super-admin'
+  | 'about';
 
 export const expenses = [
   ['Rice 25kg & Dal 5kg', 'Nur H.', '08 Oct', '৳ 2,450'],
@@ -403,7 +404,7 @@ export function DashboardHeader({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1]/95 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#d6d6d6] bg-[#f3f3f1] pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[900px]">
         {/* Brand / Logo */}
         <div
@@ -479,7 +480,7 @@ export function DashboardHeader({
                   { view: 'accounts' as DashboardView, label: 'Accounts', icon: <Wallet size={16} /> },
                   { view: 'availability' as DashboardView, label: 'Member Availability', icon: <UserCheck size={16} /> },
                   { view: 'manage-hostel' as DashboardView, label: 'Manage Flatmates', icon: <Users size={16} /> },
-                  { view: 'settings' as DashboardView, label: 'Settings & History', icon: <Settings size={16} /> },
+                  { view: 'settings' as DashboardView, label: 'Settings', icon: <Settings size={16} /> },
                 ].map((item) => {
                   const isActive = activeView === item.view;
                   const isSettings = item.view === 'settings';
@@ -506,6 +507,25 @@ export function DashboardHeader({
                     </React.Fragment>
                   );
                 })}
+
+                {/* About option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    onNavigate('about');
+                  }}
+                  className={`flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] transition-all cursor-pointer ${
+                    activeView === 'about'
+                      ? 'bg-red-50/70 text-red-600 font-sf-bold'
+                      : 'font-sf-medium text-[#141414] hover:bg-[#e5e6e1]'
+                  }`}
+                >
+                  <span className={activeView === 'about' ? 'text-red-600' : 'text-[#626262]'}>
+                    <Info size={16} />
+                  </span>
+                  <span>About</span>
+                </button>
 
                 {/* Super Admin Panel option if user is super admin */}
                 {isSuperAdmin && (
@@ -539,23 +559,6 @@ export function DashboardHeader({
                   </span>
                   <span>Install / Add to Home</span>
                 </button>
-
-                {/* Logout option */}
-                {onLogout && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="flex w-full items-center gap-[10px] rounded-[12px] px-[12px] py-[9.5px] text-[13px] font-sf-bold text-slate-600 hover:text-red-600 hover:bg-red-50/70 transition-all cursor-pointer"
-                  >
-                    <span className="text-current">
-                      <LogOut size={16} />
-                    </span>
-                    <span>Logout Account</span>
-                  </button>
-                )}
               </div>
             </div>
           )}

@@ -16,6 +16,7 @@ import { DashboardHeader, type DashboardView } from '@/components/DashboardShare
 import { InstallPwaPrompt } from '@/components/InstallPwaPrompt';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import SuperAdminPage from '@/components/SuperAdminPage';
+import { AboutPage } from '@/components/AboutPage';
 import { showPhonePushNotification } from '@/lib/pushNotifications';
 import { generatePrintableDoc, openPrintableWindow } from '@/lib/pdfReportTemplate';
 
@@ -45,7 +46,7 @@ interface BazarItem { id: number; date: string; item_name: string; is_completed:
 interface MealSchedule { id?: number; date: string; breakfast: string; lunch: string; dinner: string; }
 interface MemberAvail { id: number; user_id: string; name: string; status: 'in'|'out'; }
 
-type ViewState = 'dashboard' | 'timeline' | 'fixed-costs' | 'meals' | 'expenses' | 'accounts' | 'manage-hostel' | 'settings' | 'availability' | 'super-admin';
+type ViewState = 'dashboard' | 'timeline' | 'fixed-costs' | 'meals' | 'expenses' | 'accounts' | 'manage-hostel' | 'settings' | 'availability' | 'super-admin' | 'about';
 const StatusBadge = ({ balance }: { balance: number }) => {
   if (Math.abs(balance) < 1) return <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md text-[9px] font-black uppercase">Paid</span>;
   if (balance > 0) return <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-md text-[9px] font-black uppercase">CR ৳{balance.toFixed(0)}</span>;
@@ -60,7 +61,7 @@ export default function App() {
   
   const [activeView, setActiveView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('ami_active_view') as ViewState;
-    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability', 'super-admin'];
+    const validViews: ViewState[] = ['dashboard', 'timeline', 'fixed-costs', 'meals', 'expenses', 'accounts', 'manage-hostel', 'settings', 'availability', 'super-admin', 'about'];
     return (saved && validViews.includes(saved)) ? saved : 'dashboard';
   });
 
@@ -2533,6 +2534,16 @@ export default function App() {
                     <RotateCcw size={14} className="text-[#626262]" />
                     <span>Back to Setup</span>
                   </button>
+
+                  {/* Logout Account button */}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-[12px] font-sf-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
+                  >
+                    <LogOut size={14} className="text-red-600" />
+                    <span>Logout Account</span>
+                  </button>
                 </div>
 
                 {/* Audit Trail Logs */}
@@ -2613,6 +2624,11 @@ export default function App() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* View: About */}
+            {activeView === 'about' && (
+              <AboutPage onBack={() => handleNavClick('dashboard')} />
             )}
           </main>
         </div>

@@ -330,7 +330,7 @@ export default function SuperAdminPage({
   return (
     <div className="min-h-dvh bg-[#f3f3f1] text-[#141414] pb-16">
       {/* Top Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 border-b border-[#d6d6d6] bg-[#f3f3f1]/95 backdrop-blur-md pt-[env(safe-area-inset-top,0px)]">
+      <header className="fixed top-0 left-0 right-0 z-40 border-b border-[#d6d6d6] bg-[#f3f3f1] pt-[env(safe-area-inset-top,0px)]">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[1100px]">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
