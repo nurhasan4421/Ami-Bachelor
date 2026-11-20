@@ -1083,16 +1083,15 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] border border-slate-200 text-center relative overflow-hidden shadow-xl">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-40 mx-auto object-contain hover:scale-105 transition-transform mb-6" />
-          <p className="text-[8px] font-black text-slate-300 opacity-60 uppercase tracking-[0.3em] mt-2 mb-6">@NURHASAN4421</p>
+      <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center relative">
+          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-36 h-auto md:w-44 mx-auto object-contain hover:scale-105 transition-transform mb-3" />
+          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mb-8">@NURHASAN4421</p>
           
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-all shadow-xs active:scale-98 cursor-pointer"
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border border-[#d6d6d6] bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm transition-all shadow-xs active:scale-98 cursor-pointer"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1267,10 +1266,10 @@ export default function App() {
         </div>
       ) : isHostelLocked ? (
         <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414] items-center justify-center p-6 text-center select-none">
-          <div className="w-full max-w-md bg-white p-8 rounded-[2.5rem] border border-slate-200/90 shadow-2xl space-y-4">
+          <div className="w-full max-w-md space-y-4">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
               currentHostelStatus === 'deactivated' 
-                ? 'bg-slate-100 text-slate-700' 
+                ? 'bg-slate-200 text-slate-700' 
                 : currentHostelStatus === 'rejected'
                 ? 'bg-red-100 text-red-600'
                 : 'bg-amber-100 text-amber-700 animate-pulse'
@@ -1286,7 +1285,7 @@ export default function App() {
 
             <h2 className="font-sf-black text-2xl text-slate-900 tracking-tight">
               {currentHostelStatus === 'deactivated' 
-                ? 'Workspace Deactivated' 
+                ? 'Hostel Deactivated' 
                 : currentHostelStatus === 'rejected'
                 ? 'Request Rejected'
                 : 'Verification Pending'}
@@ -1319,7 +1318,7 @@ export default function App() {
                 }}
                 className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-sf-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg active:scale-95"
               >
-                Back to Workspaces
+                Back to Setup
               </button>
 
               {isSuperAdmin && (
@@ -2369,7 +2368,7 @@ export default function App() {
                     className="w-full py-3 bg-white hover:bg-slate-50 text-[#141414] border border-[#d6d6d6] rounded-[14px] font-sf-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
                   >
                     <RotateCcw size={15} className="text-[#626262]" />
-                    <span>Back to Setup Screen (Workspaces & Onboarding)</span>
+                    <span>Back to Setup</span>
                   </button>
                 </div>
 

@@ -19,7 +19,6 @@ const MAX_HOSTELS = 3;
 
 export function HostelOnboarding({ session, managedHostels = [], joinedHostels = [], onJoined }: HostelOnboardingProps) {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
-  const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [hostelName, setHostelName] = useState('');
   const [managerName, setManagerName] = useState('');
   const [transactionId, setTransactionId] = useState('');
@@ -58,7 +57,7 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canCreate) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} managed workspaces.`); return; }
+    if (!canCreate) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} managed hostels.`); return; }
     if (!hostelName.trim() || !managerName.trim()) { setError("Please fill in both the hostel name and your name."); return; }
     if (!transactionId.trim()) { setError("Please enter your payment Transaction ID (TrxID)."); return; }
     setLoading(true);
@@ -100,7 +99,7 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canJoin) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} joined workspaces.`); return; }
+    if (!canJoin) { setError(`You have reached the maximum limit of ${MAX_HOSTELS} joined hostels.`); return; }
     const cleanCode = securityCode.trim().toUpperCase();
     const cleanName = memberName.trim();
     if (!cleanCode || !cleanName) { setError("Please fill in both your name and the code."); return; }
@@ -109,9 +108,9 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
       const { data: lookupData, error: lookupErr } = await supabase.rpc('lookup_hostel_by_security_code', { p_code: cleanCode });
       const hostel = lookupData && lookupData.length > 0 ? lookupData[0] : null;
       if (lookupErr || !hostel) throw new Error("Invalid security code. Please check and try again.");
-      if (hostel.owner_id === session.user.id) throw new Error("You are the Manager of this workspace! Please select it from 'Your Workspaces'.");
+      if (hostel.owner_id === session.user.id) throw new Error("You are the Manager of this hostel! Please select it from 'Your Hostels'.");
       const month = { id: hostel.latest_month_id };
-      if (!month.id) throw new Error("Workspace found, but no active months are available.");
+      if (!month.id) throw new Error("Hostel found, but no active months are available.");
 
       const { data: allMonths } = await supabase.from('months').select('id').eq('hostel_id', hostel.id);
       if (allMonths && allMonths.length > 0) {
@@ -128,7 +127,7 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
       const { data: myRecords } = await supabase.from('roommates').select('*').eq('month_id', month.id).eq('user_id', session.user.id);
       if (myRecords && myRecords.length > 0) {
         const claimedName = myRecords[0].name;
-        if (cleanName.toLowerCase() !== claimedName.toLowerCase()) throw new Error(`You already joined this workspace previously! You must use your registered name: "${claimedName}".`);
+        if (cleanName.toLowerCase() !== claimedName.toLowerCase()) throw new Error(`You already joined this hostel previously! You must use your registered name: "${claimedName}".`);
         else { onJoined(month.id); return; }
       } 
       const { data: pendingReq } = await supabase.from('join_requests').select('*').eq('hostel_id', hostel.id).eq('user_id', session.user.id).maybeSingle();
@@ -152,18 +151,18 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 font-sans">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-40 mx-auto object-contain drop-shadow-md hover:scale-105 transition-transform" />
-          <p className="text-[8px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-3">@NURHASAN4421</p>
+        <div className="text-center mb-6">
+          <img src="/logo.png" alt="Ami Bachelor Logo" className="w-36 h-auto md:w-44 mx-auto object-contain hover:scale-105 transition-transform" />
+          <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-2 mb-4">@NURHASAN4421</p>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] p-6 md:p-8 shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden relative min-h-[400px] flex flex-col justify-center">
+        <div className="w-full relative min-h-[360px] flex flex-col justify-center">
           <AnimatePresence mode="wait">
             {mode === 'select' && (
               <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                 {(managedHostels.length > 0 || joinedHostels.length > 0) && (
                   <div className="space-y-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">Your Workspaces</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">Your Hostels</p>
                     {managedHostels.map(h => {
                       const isPending = h.status === 'pending';
                       const isRejected = h.status === 'rejected';
@@ -177,7 +176,7 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                             ? 'bg-red-50/70 border-red-200' 
                             : isDeactivated
                             ? 'bg-slate-100/80 border-slate-200 opacity-75'
-                            : 'bg-slate-50 hover:bg-blue-50 border-slate-100 hover:border-blue-100'
+                            : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200'
                         } group`}>
                           <button 
                             disabled={isPending || isDeactivated}
@@ -217,27 +216,27 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                               </p>
                             </div>
                           </button>
-                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Delete Workspace"><Trash2 size={16} /></button>
+                          <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Delete Hostel"><Trash2 size={16} /></button>
                         </div>
                       );
                     })}
                     {joinedHostels.map(h => (
-                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-4 pr-2 bg-slate-50 hover:bg-emerald-50 rounded-2xl transition-all border border-slate-100 hover:border-emerald-100 group">
+                      <div key={h.id} className="w-full flex items-center justify-between p-2 pl-4 pr-2 bg-white hover:bg-emerald-50 rounded-2xl transition-all border border-slate-200 hover:border-emerald-200 group">
                         <button onClick={() => onJoined(h.latestMonthId)} className="flex items-center gap-3 flex-1 text-left cursor-pointer">
                           <div className="bg-emerald-100 text-emerald-600 p-2 rounded-xl"><Eye size={18} /></div>
                           <div><p className="font-black text-sm text-slate-800">{h.name}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Member</p></div>
                         </button>
-                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Leave Workspace"><Trash2 size={16} /></button>
+                        <button onClick={(e) => handleDeleteWorkspace(h, e)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-100 rounded-xl transition-colors cursor-pointer" title="Leave Hostel"><Trash2 size={16} /></button>
                       </div>
                     ))}
-                    <div className="w-full h-px bg-slate-100 my-4"></div>
+                    <div className="w-full h-px bg-slate-200 my-4"></div>
                   </div>
                 )}
                 <div className="space-y-4">
-                  <button onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} disabled={!canJoin} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl shadow-slate-900/20 active:scale-95 transition-all cursor-pointer">Join Workspace</button>
+                  <button onClick={() => { setMode('join'); setJoinSuccessMsg(''); setError(''); }} disabled={!canJoin} className="w-full py-4.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-base shadow-lg shadow-slate-900/10 active:scale-98 transition-all cursor-pointer">Join Hostel</button>
                   <div className="text-center">
-                    <button onClick={() => { setMode('create'); setCreateStep(1); setError(''); }} disabled={!canCreate} className="text-sm font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
-                      {canCreate ? 'Create New Workspace' : `Create limit reached (${MAX_HOSTELS})`}
+                    <button onClick={() => { setMode('create'); setError(''); }} disabled={!canCreate} className="text-sm font-black text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 cursor-pointer">
+                      {canCreate ? 'Create New Hostel' : `Create limit reached (${MAX_HOSTELS})`}
                     </button>
                   </div>
                 </div>
@@ -249,100 +248,75 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                 {!createdData ? (
                   <>
                     <button onClick={() => {setMode('select'); setError('');}} className="flex items-center gap-2 text-slate-400 hover:text-slate-800 mb-6 font-black text-[11px] uppercase tracking-widest transition-colors cursor-pointer"><ArrowLeft size={14} /> Back</button>
-                    <h2 className="text-2xl font-black mb-2 text-slate-800 text-center">Create Your Hostel</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider text-center mb-6">
-                      Step {createStep} of 3
-                    </p>
+                    <h2 className="text-2xl font-black mb-6 text-slate-800 text-center">Create New Hostel</h2>
 
-                    <form onSubmit={handleCreate} className="space-y-4">
-                      {createStep === 1 ? (
-                        <>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Building className="text-slate-400" size={20} /></div>
-                            <input type="text" placeholder="Hostel Name (e.g. Villa 40)" value={hostelName} onChange={(e) => setHostelName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-bold text-slate-800 outline-none capitalize" autoFocus />
-                          </div>
-                          <button type="button" disabled={!hostelName.trim()} onClick={() => setCreateStep(2)} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-black transition-all cursor-pointer">Next: Manager Name</button>
-                        </>
-                      ) : createStep === 2 ? (
-                        <>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={20} /></div>
-                            <input type="text" placeholder="Your Name (Manager)" value={managerName} onChange={(e) => setManagerName(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-bold text-slate-800 outline-none capitalize" autoFocus />
-                          </div>
-                          <div className="flex gap-2">
-                            <button type="button" onClick={() => setCreateStep(1)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold transition-all cursor-pointer">Back</button>
-                            <button type="button" disabled={!managerName.trim()} onClick={() => setCreateStep(3)} className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-black transition-all cursor-pointer">Next: Payment & TrxID</button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Payment Instructions Card */}
-                          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-left space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-sf-bold uppercase text-amber-800 tracking-wider">Manual Verification</span>
-                              <span className="text-[10px] font-mono font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">bKash / Nagad</span>
-                            </div>
-                            <p className="text-xs text-slate-600 font-sf-medium">
-                              Send creation fee via <strong>Send Money</strong> to:
-                            </p>
-                            <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-amber-200 text-xs font-mono font-bold text-slate-800">
-                              <span>01700-000000 (Personal)</span>
-                              <span className="text-[10px] text-amber-700 uppercase">bKash/Nagad</span>
-                            </div>
-                            <p className="text-[11px] text-slate-500 font-sf-regular">
-                              After sending, enter your Transaction ID below. Super Admin will verify and activate your workspace.
-                            </p>
-                          </div>
+                    <form onSubmit={handleCreate} className="space-y-3.5">
+                      {/* Field 1: Hostel Name */}
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Building className="text-slate-400" size={18} /></div>
+                        <input 
+                          type="text" 
+                          placeholder="Hostel Name (e.g. Villa 40)" 
+                          value={hostelName} 
+                          onChange={(e) => setHostelName(e.target.value)} 
+                          className="w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-sm" 
+                          autoFocus 
+                        />
+                      </div>
 
-                          {/* Method Selector */}
-                          <div className="flex gap-2">
-                            {(['bKash', 'Nagad', 'Rocket'] as const).map((method) => (
-                              <button
-                                key={method}
-                                type="button"
-                                onClick={() => setPaymentMethod(method)}
-                                className={`flex-1 py-2.5 rounded-xl font-sf-bold text-xs border transition-all cursor-pointer ${
-                                  paymentMethod === method
-                                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                                }`}
-                              >
-                                {method}
-                              </button>
-                            ))}
-                          </div>
+                      {/* Field 2: Your Name (Manager) */}
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><UserCircle className="text-slate-400" size={18} /></div>
+                        <input 
+                          type="text" 
+                          placeholder="Your Name (Manager)" 
+                          value={managerName} 
+                          onChange={(e) => setManagerName(e.target.value)} 
+                          className="w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-bold text-slate-800 outline-none capitalize text-sm" 
+                        />
+                      </div>
 
-                          {/* Transaction ID Input */}
-                          <div className="relative">
-                            <input 
-                              type="text" 
-                              placeholder="Transaction ID (TrxID) *" 
-                              value={transactionId} 
-                              onChange={(e) => setTransactionId(e.target.value.toUpperCase())} 
-                              className="w-full px-4 py-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-300 transition-all font-mono font-bold text-slate-800 outline-none uppercase tracking-wider" 
-                              autoFocus 
-                            />
-                          </div>
+                      {/* Divider */}
+                      <div className="w-full h-px bg-slate-200 my-2" />
 
-                          {/* Sender Phone (optional) */}
-                          <div className="relative">
-                            <input 
-                              type="tel" 
-                              placeholder="Sender Phone Number (Optional)" 
-                              value={paymentPhone} 
-                              onChange={(e) => setPaymentPhone(e.target.value)} 
-                              className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-300 transition-all font-sf-medium text-xs text-slate-800 outline-none" 
-                            />
-                          </div>
+                      {/* Mini Payment Method Selector */}
+                      <div className="flex gap-2">
+                        {(['bKash', 'Nagad', 'Rocket'] as const).map((method) => (
+                          <button
+                            key={method}
+                            type="button"
+                            onClick={() => setPaymentMethod(method)}
+                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[11px] uppercase tracking-wider border transition-all cursor-pointer ${
+                              paymentMethod === method
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            {method}
+                          </button>
+                        ))}
+                      </div>
 
-                          {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
-                          
-                          <div className="flex gap-2">
-                            <button type="button" onClick={() => setCreateStep(2)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold transition-all cursor-pointer">Back</button>
-                            <button type="submit" disabled={!transactionId.trim() || loading} className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-500/20">{loading ? <Loader2 className="animate-spin" size={20} /> : 'Submit for Verification'}</button>
-                          </div>
-                        </>
-                      )}
+                      {/* Field 3: Transaction ID */}
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          placeholder="Transaction ID (TrxID) *" 
+                          value={transactionId} 
+                          onChange={(e) => setTransactionId(e.target.value.toUpperCase())} 
+                          className="w-full px-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-mono font-bold text-slate-800 outline-none uppercase tracking-wider text-sm" 
+                        />
+                      </div>
+
+                      {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-xl flex items-center justify-center gap-1"><AlertCircle size={14} /> {error}</p>}
+
+                      <button 
+                        type="submit" 
+                        disabled={!hostelName.trim() || !managerName.trim() || !transactionId.trim() || loading} 
+                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 active:scale-98"
+                      >
+                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Hostel'}
+                      </button>
                     </form>
                   </>
                 ) : (
@@ -350,13 +324,14 @@ export function HostelOnboarding({ session, managedHostels = [], joinedHostels =
                     <div className="bg-amber-100 text-amber-700 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><Clock size={32} strokeWidth={2.5} /></div>
                     <h2 className="text-2xl font-black text-slate-800 mb-2">Submitted for Verification!</h2>
                     <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-4">Awaiting Super Admin Approval</p>
-                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6 text-xs text-slate-600 space-y-2 text-left">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 text-xs text-slate-600 space-y-2 text-left">
                       <p><strong>Hostel:</strong> {hostelName}</p>
+                      <p><strong>Method:</strong> <span className="font-bold text-slate-800">{paymentMethod}</span></p>
                       <p><strong>Transaction ID:</strong> <span className="font-mono text-blue-600 font-bold">{transactionId}</span></p>
                       <p><strong>Security Code:</strong> <span className="font-mono font-bold">{createdData.code}</span></p>
-                      <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">The Super Admin will check the transaction statement and activate your workspace soon.</p>
+                      <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">The Super Admin will check the transaction statement and activate your hostel soon.</p>
                     </div>
-                    <button onClick={() => { setCreatedData(null); setMode('select'); }} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black shadow-xl shadow-slate-900/20 transition-all active:scale-95 cursor-pointer">Back to Workspaces</button>
+                    <button onClick={() => { setCreatedData(null); setMode('select'); }} className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-sm shadow-lg shadow-slate-900/10 transition-all active:scale-95 cursor-pointer">Back to Setup</button>
                   </div>
                 )}
               </motion.div>
