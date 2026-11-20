@@ -178,11 +178,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }: any) => {
-      if (error) {
-        handleLogout();
-      } else {
-        setSession(session);
+    supabase.auth.getSession().then(({ data, error }: any) => {
+      if (!error && data?.session) {
+        setSession(data.session);
       }
       setLoadingAuth(false);
     });
@@ -396,7 +394,7 @@ export default function App() {
 
   useEffect(() => { fetchSheetData(); }, [fetchSheetData]);
 
-  // Realtime Push & System Notifications when manager broadcasts
+  // Realtime Live Data Synchronization & System Notifications
   useEffect(() => {
     if (!session || !activeMonthId) return;
 
@@ -413,8 +411,17 @@ export default function App() {
         }
       });
 
+    let syncTimer: any = null;
+    const triggerSilentSync = (msg?: string) => {
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        fetchSheetData();
+        showToast(msg || "Data updated live", "info");
+      }, 350);
+    };
+
     const channel = supabase
-      .channel(`notifications-month-${activeMonthId}`)
+      .channel(`live-sync-month-${activeMonthId}`)
       .on(
         'postgres_changes',
         {
@@ -435,12 +442,37 @@ export default function App() {
           }
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'roommates', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Flatmates updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Expenses updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_meals', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Meals updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'food_deposits', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Deposits updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixed_costs', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Fixed costs updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bazar_list', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Bazar list updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meal_schedules', filter: `month_id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Meal schedule updated live");
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'months', filter: `id=eq.${activeMonthId}` }, () => {
+        triggerSilentSync("Month updated live");
+      })
       .subscribe();
 
     return () => {
+      if (syncTimer) clearTimeout(syncTimer);
       supabase.removeChannel(channel);
     };
-  }, [session, activeMonthId]);
+  }, [session, activeMonthId, fetchSheetData]);
 
   const handleAddBazarItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1120,7 +1152,7 @@ export default function App() {
     openPrintableWindow(fullHTML);
   };
 
-  if (loadingAuth) return <div className="min-h-screen bg-slate-50 flex items-center justify-center font-black text-slate-400">LOADING...</div>;
+  if (loadingAuth) return <div className="min-h-dvh bg-slate-50 flex items-center justify-center font-black text-slate-400">LOADING...</div>;
 
   if (!session) {
     const handleGoogleSignIn = async () => {
@@ -1137,7 +1169,7 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-[#f3f3f1] flex items-center justify-center p-4">
         <div className="w-full max-w-[280px] sm:max-w-[300px] text-center relative mx-auto">
           <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform mb-2" />
           <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mb-6">@NURHASAN4421</p>
@@ -1161,7 +1193,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-20 font-sans antialiased text-[14px] md:text-base selection:bg-blue-200 print:bg-white print:text-black">
+    <div className="min-h-dvh bg-slate-50/50 text-slate-900 pb-20 font-sans antialiased text-[14px] md:text-base selection:bg-blue-200 print:bg-white print:text-black">
       
       {/* 🌟 NEW: Custom Apple-Style Global Dialog Modal */}
       <AnimatePresence>
@@ -1252,22 +1284,28 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Toast Notification Banner */}
+      {/* Toast Notification Banner: Mini Unobtrusive Bottom-Center Pill */}
       <AnimatePresence>
         {toast && (
           <motion.div 
-            initial={{ y: -100, opacity: 0, scale: 0.95 }} 
-            animate={{ y: 24, opacity: 1, scale: 1 }} 
-            exit={{ y: -100, opacity: 0, scale: 0.95 }} 
-            className="fixed top-0 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md pointer-events-none"
+            initial={{ y: 40, opacity: 0, scale: 0.95 }} 
+            animate={{ y: 0, opacity: 1, scale: 1 }} 
+            exit={{ y: 40, opacity: 0, scale: 0.95 }} 
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] max-w-[92vw] pointer-events-none"
           >
-            <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl backdrop-blur-xl border ${
-              toast.type === 'error' ? 'bg-red-500/90 text-white border-red-400/50 shadow-red-500/20' :
-              toast.type === 'info' ? 'bg-blue-500/90 text-white border-blue-400/50 shadow-blue-500/20' :
-              'bg-slate-900/90 text-white border-slate-700 shadow-slate-900/20'
+            <div className={`flex items-center gap-2 px-3.5 py-2 rounded-full shadow-xl backdrop-blur-md border text-xs ${
+              toast.type === 'error' ? 'bg-red-600/95 text-white border-red-500 shadow-red-600/25' :
+              toast.type === 'info' ? 'bg-[#181818]/95 text-white border-[#383838] shadow-black/25' :
+              'bg-[#181818]/95 text-white border-[#383838] shadow-black/25'
             }`}>
-              {toast.type === 'error' ? <X size={20} strokeWidth={3} /> : toast.type === 'info' ? <Bell size={20} strokeWidth={3}/> : <Check size={20} strokeWidth={3} />}
-              <p className="text-sm font-bold tracking-wide">{toast.message}</p>
+              {toast.type === 'error' ? (
+                <X size={14} strokeWidth={2.5} className="text-red-200 shrink-0" />
+              ) : toast.type === 'info' ? (
+                <Bell size={14} strokeWidth={2.5} className="text-blue-300 shrink-0" />
+              ) : (
+                <Check size={14} strokeWidth={2.5} className="text-emerald-400 shrink-0" />
+              )}
+              <p className="font-sf-medium text-xs tracking-tight select-none">{toast.message}</p>
             </div>
           </motion.div>
         )}
@@ -1281,7 +1319,7 @@ export default function App() {
 
       {showFlatmatesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85dvh]">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
               <h2 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2"><Users size={20} className="text-blue-500"/> Manage Flatmates</h2>
               <button onClick={() => setShowFlatmatesModal(false)} className="p-2 bg-white text-slate-400 hover:text-slate-700 rounded-full shadow-sm"><X size={18} /></button>
@@ -1289,6 +1327,10 @@ export default function App() {
             <div className="p-6 overflow-y-auto flex-1">
               <RoommateManager 
                 roommates={roommatesData} isManager={effectiveIsManager} hostelId={activeHostelId} currentUserId={session?.user?.id}
+                onUpdated={() => {
+                  fetchSheetData();
+                  showToast("Flatmate details updated");
+                }}
                 onAddRoommate={async (n, userId, requestId, email) => { 
                   const cleanName = n.trim();
                   if (roommates.map(r => r.toLowerCase()).includes(cleanName.toLowerCase())) { showToast("Name exists!", "error"); return; }
@@ -1311,7 +1353,7 @@ export default function App() {
 
       {/* If still initially resolving active month, avoid flashing onboarding */}
       {isInitialSyncing ? (
-        <div className="min-h-screen bg-[#f3f3f1] flex items-center justify-center font-sf-medium text-xs text-[#8e8e8e]">
+        <div className="min-h-dvh bg-[#f3f3f1] flex items-center justify-center font-sf-medium text-xs text-[#8e8e8e]">
           <div className="flex flex-col items-center gap-3">
             <img src="/logo.png" alt="Logo" className="h-9 w-auto object-contain animate-pulse" />
             <span>Loading workspace...</span>
@@ -1330,7 +1372,7 @@ export default function App() {
           showToast={showToast}
         />
       ) : !activeMonthId ? (
-        <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414]">
+        <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414]">
           <HostelOnboarding
             session={session}
             managedHostels={managedHostels}
@@ -1338,6 +1380,7 @@ export default function App() {
             isSuperAdmin={isSuperAdmin}
             onOpenSuperAdmin={() => setActiveView('super-admin')}
             onLogout={handleLogout}
+            onRefreshHostels={fetchMonthsAndHostels}
             onJoined={async (id: string) => {
               setActiveMonthId(id);
               await fetchMonthsAndHostels();
@@ -1346,7 +1389,7 @@ export default function App() {
           />
         </div>
       ) : isHostelLocked ? (
-        <div className="flex flex-col min-h-screen bg-[#f3f3f1] text-[#141414] items-center justify-center p-6 text-center select-none">
+        <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414] items-center justify-center p-6 text-center select-none">
           <div className="w-full max-w-md space-y-4">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
               currentHostelStatus === 'deactivated' 
@@ -2205,6 +2248,10 @@ export default function App() {
                     isManager={effectiveIsManager}
                     hostelId={activeHostelId}
                     currentUserId={session?.user?.id}
+                    onUpdated={() => {
+                      fetchSheetData();
+                      showToast("Flatmate details updated");
+                    }}
                     onAddRoommate={async (n, userId, requestId, email) => {
                       const cleanName = n.trim();
                       if (roommates.map((r) => r.toLowerCase()).includes(cleanName.toLowerCase())) {

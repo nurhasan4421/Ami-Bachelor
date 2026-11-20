@@ -21,6 +21,7 @@ interface HostelOnboardingProps {
   isSuperAdmin?: boolean;
   onOpenSuperAdmin?: () => void;
   onLogout?: () => void;
+  onRefreshHostels?: () => void;
 }
 
 const MAX_HOSTELS = 3;
@@ -32,7 +33,8 @@ export function HostelOnboarding({
   onJoined,
   isSuperAdmin,
   onOpenSuperAdmin,
-  onLogout
+  onLogout,
+  onRefreshHostels
 }: HostelOnboardingProps) {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
   const [hostelName, setHostelName] = useState('');
@@ -56,7 +58,7 @@ export function HostelOnboarding({
     if (h.role === 'manager') {
       if (window.confirm(`☢️ Are you sure you want to completely DELETE "${h.name}"? This removes ALL data for everyone and cannot be undone.`)) {
         await supabase.from('hostels').delete().eq('id', h.id);
-        window.location.reload();
+        if (onRefreshHostels) onRefreshHostels();
       }
     } else {
       if (window.confirm(`🚪 Are you sure you want to LEAVE "${h.name}"? You will lose access until the manager re-approves you.`)) {
@@ -66,7 +68,7 @@ export function HostelOnboarding({
           await supabase.from('roommates').delete().in('month_id', monthIds).eq('user_id', session.user.id);
         }
         await supabase.from('join_requests').delete().eq('hostel_id', h.id).eq('user_id', session.user.id);
-        window.location.reload();
+        if (onRefreshHostels) onRefreshHostels();
       }
     }
   };
@@ -179,7 +181,7 @@ export function HostelOnboarding({
   };
 
   return (
-    <div className="flex flex-col min-h-screen font-sans">
+    <div className="flex flex-col min-h-dvh font-sans">
       {/* Top Header Bar at exact same Y-axis position */}
       <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
         {mode === 'select' ? (

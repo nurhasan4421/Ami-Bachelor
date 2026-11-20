@@ -29,6 +29,7 @@ interface Props {
   currentUserId?: string;
   onAddRoommate: (name: string, userId?: string, reqId?: string, email?: string) => void;
   onRemoveRoommate: (name: string) => void;
+  onUpdated?: () => void;
 }
 
 export function RoommateManager({
@@ -38,6 +39,7 @@ export function RoommateManager({
   currentUserId,
   onAddRoommate,
   onRemoveRoommate,
+  onUpdated,
 }: Props) {
   const [newName, setNewName] = useState('');
   const [requests, setRequests] = useState<JoinRequest[]>([]);
@@ -76,7 +78,8 @@ export function RoommateManager({
 
   const handleRoleChange = async (r: Roommate, newRole: string) => {
     await supabase.from('roommates').update({ role: newRole }).eq('id', r.id);
-    window.location.reload();
+    setOpenMenuId(null);
+    if (onUpdated) onUpdated();
   };
 
   const handleTransferOwnership = async (r: Roommate) => {
@@ -87,7 +90,8 @@ export function RoommateManager({
       await supabase.from('hostels').update({ owner_id: r.user_id }).eq('id', hostelId);
       await supabase.from('months').update({ owner_id: r.user_id }).eq('id', currentMonth);
       await supabase.from('roommates').update({ role: 'member' }).eq('user_id', currentUserId);
-      window.location.reload();
+      setOpenMenuId(null);
+      if (onUpdated) onUpdated();
     }
   };
 
@@ -108,7 +112,8 @@ export function RoommateManager({
       await supabase.from('roommates').update({ phone: editPhone, address: editAddress }).eq('id', r.id);
     } catch {}
 
-    window.location.reload();
+    setExpandedId(null);
+    if (onUpdated) onUpdated();
   };
 
   const openProfile = (r: Roommate) => {
@@ -304,50 +309,58 @@ export function RoommateManager({
             {expandedId === r.id && (
               <div className="px-4 sm:px-5 py-3.5 bg-black/5 border-t border-[#d6d6d6] space-y-2.5">
                 {/* 1-Line Minimal Calculation Type: placed before email row */}
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-3 py-2 rounded-[10px] border border-[#d6d6d6]">
-                  <span className="font-sf-bold text-[10px] text-[#141414] uppercase tracking-wider shrink-0">
-                    Calculation Type
-                  </span>
-                  <div className="flex items-center gap-3 text-xs font-sf-medium">
-                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name={`plan-${r.id}`}
-                        value="meal"
-                        checked={editPlan === 'meal'}
-                        disabled={!isManager}
-                        onChange={() => setEditPlan('meal')}
-                        className="accent-red-600 h-3.5 w-3.5 cursor-pointer"
-                      />
-                      <span>Meal</span>
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                      <input
-                        type="radio"
-                        name={`plan-${r.id}`}
-                        value="flat"
-                        checked={editPlan === 'flat'}
-                        disabled={!isManager}
-                        onChange={() => setEditPlan('flat')}
-                        className="accent-red-600 h-3.5 w-3.5 cursor-pointer"
-                      />
-                      <span>Flat</span>
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={editPlan === 'both'}
-                        disabled={!isManager}
-                        onChange={(e) => {
-                          if (e.target.checked) setEditPlan('both');
-                          else setEditPlan('meal');
-                        }}
-                        className="accent-red-600 h-3.5 w-3.5 rounded cursor-pointer"
-                      />
-                      <span>Both</span>
-                    </label>
+                {isManager ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-3 py-2 rounded-[10px] border border-[#d6d6d6]">
+                    <span className="font-sf-bold text-[10px] text-[#141414] uppercase tracking-wider shrink-0">
+                      Calculation Type
+                    </span>
+                    <div className="flex items-center gap-3 text-xs font-sf-medium">
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name={`plan-${r.id}`}
+                          value="meal"
+                          checked={editPlan === 'meal'}
+                          onChange={() => setEditPlan('meal')}
+                          className="accent-red-600 h-3.5 w-3.5 cursor-pointer"
+                        />
+                        <span>Meal</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name={`plan-${r.id}`}
+                          value="flat"
+                          checked={editPlan === 'flat'}
+                          onChange={() => setEditPlan('flat')}
+                          className="accent-red-600 h-3.5 w-3.5 cursor-pointer"
+                        />
+                        <span>Flat</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editPlan === 'both'}
+                          onChange={(e) => {
+                            if (e.target.checked) setEditPlan('both');
+                            else setEditPlan('meal');
+                          }}
+                          className="accent-red-600 h-3.5 w-3.5 rounded cursor-pointer"
+                        />
+                        <span>Both</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-white px-3 py-2 rounded-[10px] border border-[#d6d6d6]">
+                    <span className="font-sf-bold text-[10px] text-[#141414] uppercase tracking-wider">
+                      Calculation Type
+                    </span>
+                    <span className="text-[10px] font-sf-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-300">
+                      {editPlan === 'meal' ? 'Meal Only' : editPlan === 'flat' ? 'Flat Only' : 'Meal & Flat'}
+                    </span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="bg-white p-2.5 rounded-[10px] border border-[#d6d6d6]">

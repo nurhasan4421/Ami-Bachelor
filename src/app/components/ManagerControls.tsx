@@ -17,7 +17,7 @@ export function ManagerControls({ activeMonthId, isManager, showActions, onRefre
 
   const handleExit = () => {
     localStorage.removeItem('activeMonthId');
-    window.location.reload();
+    onRefresh();
   };
 
   return (
@@ -55,7 +55,7 @@ export function ManagerControls({ activeMonthId, isManager, showActions, onRefre
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button onClick={() => { if(confirm("Reset all data?")) { ['expenses', 'daily_meals', 'food_deposits'].forEach(t => supabase.from(t).delete().eq('month_id', activeMonthId)); onRefresh(); } }} className="bg-white text-red-600 border border-red-200 py-4 rounded-2xl font-black shadow-sm active:scale-95"><RotateCcw size={18} className="inline mr-2" /> Reset Data</button>
-              <button onClick={async () => { if(confirm("Delete month permanently?")) { ['expenses', 'daily_meals', 'food_deposits', 'roommates'].forEach(t => supabase.from(t).delete().eq('month_id', activeMonthId)); await supabase.from('months').delete().eq('id', activeMonthId); window.location.reload(); } }} className="bg-red-600 text-white py-4 rounded-2xl font-black shadow-md active:scale-95"><Trash2 size={18} className="inline mr-2" /> Delete Month</button>
+              <button onClick={async () => { if(confirm("Delete month permanently?")) { ['expenses', 'daily_meals', 'food_deposits', 'roommates'].forEach(t => supabase.from(t).delete().eq('month_id', activeMonthId)); await supabase.from('months').delete().eq('id', activeMonthId); localStorage.removeItem('activeMonthId'); onRefresh(); } }} className="bg-red-600 text-white py-4 rounded-2xl font-black shadow-md active:scale-95"><Trash2 size={18} className="inline mr-2" /> Delete Month</button>
             </div>
           </div>
         </div>

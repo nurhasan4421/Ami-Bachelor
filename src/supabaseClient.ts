@@ -6,7 +6,16 @@ const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 export const isLiveSupabase = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('mock'));
 export const BYPASS_AUTH = !isLiveSupabase;
 
-const liveClient = isLiveSupabase ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const liveClient = isLiveSupabase
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      },
+    })
+  : null;
 const MOCK_USER = {
   id: 'manager-user-001',
   email: 'nurhasan@gmail.com',
