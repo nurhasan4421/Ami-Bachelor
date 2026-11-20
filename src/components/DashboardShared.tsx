@@ -416,9 +416,9 @@ export function DashboardHeader({
           <img src="/logo.png" alt="Logo" className="h-[34px] w-auto object-contain" />
         </div>
 
-        {/* Navbar Center: Mini font @NURHASAN4421 */}
-        <div className="flex items-center justify-center select-none pointer-events-none px-2">
-          <span className="text-[10px] sm:text-[11px] font-sf-bold tracking-wider text-[#8e8e8e] uppercase">
+        {/* Navbar Center: Mini font @NURHASAN4421 - 60% visible */}
+        <div className="flex items-center justify-center select-none pointer-events-none px-2 opacity-60">
+          <span className="text-[10px] sm:text-[11px] font-sf-bold tracking-wider text-[#141414] uppercase">
             @NURHASAN4421
           </span>
         </div>

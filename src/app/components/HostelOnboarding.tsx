@@ -181,9 +181,9 @@ export function HostelOnboarding({
   };
 
   return (
-    <div className="flex flex-col min-h-dvh font-sans pt-[env(safe-area-inset-top,0px)]">
+    <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414] font-sans pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
       {/* Top Header Bar at exact same Y-axis position */}
-      <div className="p-4 sm:p-6 flex justify-between items-center max-w-md w-full mx-auto">
+      <div className="p-4 sm:p-5 flex justify-between items-center max-w-md w-full mx-auto shrink-0">
         {mode === 'select' ? (
           <>
             {isSuperAdmin ? (
@@ -216,14 +216,14 @@ export function HostelOnboarding({
         )}
       </div>
 
-      <div className="flex flex-col items-center justify-center flex-1 px-4 pb-8">
+      <div className="flex flex-col items-center justify-center flex-1 px-4 py-2">
         <div className="w-full max-w-[280px] sm:max-w-[300px] mx-auto">
-          <div className="text-center mb-5">
+          <div className="text-center mb-4">
             <img src="/logo.png" alt="Ami Bachelor Logo" className="w-32 h-auto md:w-36 mx-auto object-contain hover:scale-105 transition-transform" />
-            <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-3">@NURHASAN4421</p>
+            <p className="text-[9px] font-black text-slate-400 opacity-60 uppercase tracking-[0.3em] mt-1.5 mb-2">@NURHASAN4421</p>
           </div>
 
-          <div className="w-full relative min-h-[320px] flex flex-col justify-center">
+          <div className="w-full relative flex flex-col justify-center">
             <AnimatePresence mode="wait">
               {mode === 'select' && (
                 <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">

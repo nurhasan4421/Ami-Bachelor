@@ -1304,7 +1304,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50/50 text-slate-900 pb-20 font-sans antialiased text-[14px] md:text-base selection:bg-blue-200 print:bg-white print:text-black">
+    <div className="min-h-dvh bg-[#f3f3f1] text-slate-900 font-sans antialiased text-[14px] md:text-base selection:bg-blue-200 print:bg-white print:text-black">
       
       {/* 🌟 NEW: Custom Apple-Style Global Dialog Modal */}
       <AnimatePresence>
@@ -1483,22 +1483,20 @@ export default function App() {
           showToast={showToast}
         />
       ) : !activeMonthId ? (
-        <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414]">
-          <HostelOnboarding
-            session={session}
-            managedHostels={managedHostels}
-            joinedHostels={joinedHostels}
-            isSuperAdmin={isSuperAdmin}
-            onOpenSuperAdmin={() => setActiveView('super-admin')}
-            onLogout={handleLogout}
-            onRefreshHostels={fetchMonthsAndHostels}
-            onJoined={async (id: string) => {
-              setActiveMonthId(id);
-              await fetchMonthsAndHostels();
-              await fetchSheetData();
-            }}
-          />
-        </div>
+        <HostelOnboarding
+          session={session}
+          managedHostels={managedHostels}
+          joinedHostels={joinedHostels}
+          isSuperAdmin={isSuperAdmin}
+          onOpenSuperAdmin={() => setActiveView('super-admin')}
+          onLogout={handleLogout}
+          onRefreshHostels={fetchMonthsAndHostels}
+          onJoined={async (id: string) => {
+            setActiveMonthId(id);
+            await fetchMonthsAndHostels();
+            await fetchSheetData();
+          }}
+        />
       ) : isHostelLocked ? (
         <div className="flex flex-col min-h-dvh bg-[#f3f3f1] text-[#141414] items-center justify-center p-6 text-center select-none">
           <div className="w-full max-w-md space-y-4">
