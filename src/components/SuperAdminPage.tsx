@@ -330,7 +330,7 @@ export default function SuperAdminPage({
   return (
     <div className="min-h-dvh bg-[#f3f3f1] text-[#141414] pb-16">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-[#d6d6d6] bg-[#f3f3f1]">
+      <header className="fixed top-0 left-0 right-0 z-40 border-b border-[#d6d6d6] bg-[#f3f3f1]/95 backdrop-blur-md">
         <div className="mx-auto flex h-[64px] w-[calc(100%-32px)] items-center justify-between lg:max-w-[1100px]">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
@@ -359,6 +359,7 @@ export default function SuperAdminPage({
           </div>
         </div>
       </header>
+      <div className="h-[64px] mb-6 shrink-0 pointer-events-none" aria-hidden="true" />
 
       <main className="mx-auto mt-6 w-[calc(100%-32px)] flex flex-col gap-6 lg:max-w-[1100px]">
         {/* Metric Cards Row */}
