@@ -1936,7 +1936,7 @@ export default function App() {
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="font-sf-regular text-[9px] text-[#8e8e8e] uppercase tracking-wider">
-                        Current Cost Per Meal
+                        Cost per meal
                       </span>
                       <h2 className="font-sf-bold text-3xl text-white mt-1">
                         ৳{calculations.costPerMeal.toFixed(2)}
@@ -1944,7 +1944,7 @@ export default function App() {
                     </div>
                     <div className="text-right">
                       <span className="font-sf-regular text-[9px] text-[#8e8e8e] uppercase tracking-wider">
-                        Total Meals Logged
+                        Total meal
                       </span>
                       <p className="font-sf-bold text-2xl text-red-500 mt-1">
                         {calculations.totalMeals}
@@ -1953,7 +1953,7 @@ export default function App() {
                   </div>
                   <div className="flex items-center justify-between border-t border-white/10 pt-3">
                     <span className="font-sf-regular text-xs text-[#8e8e8e]">
-                      Total Grocery Spent: ৳{(expenses.filter(e => e.category === 'Meal').reduce((s, e) => s + Number(e.amount || 0), 0) || Math.round((Number(calculations?.costPerMeal) || 0) * (Number(calculations?.totalMeals) || 0))).toLocaleString()}
+                      grocery spent: ৳{(expenses.filter(e => e.category === 'Meal').reduce((s, e) => s + Number(e.amount || 0), 0) || Math.round((Number(calculations?.costPerMeal) || 0) * (Number(calculations?.totalMeals) || 0))).toLocaleString()}
                     </span>
                     <span className="font-sf-bold text-sm text-white">
                       Group Fund: ৳{Number(calculations?.groupFundBalance || 0).toLocaleString()}
@@ -2043,14 +2043,8 @@ export default function App() {
                       <p className="font-sf-medium text-[11px] text-[#626262]">
                         {new Date(scheduleDate).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
-                      <h3 className="font-sf-bold text-base text-[#141414]">Today's Grocery List</h3>
+                      <h3 className="font-sf-bold text-base text-[#141414]">Todays grocery</h3>
                     </div>
-                    <input
-                      type="date"
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      className="text-[11px] font-sf-medium text-[#141414] bg-white px-2 py-1 rounded-[8px] border border-[#d6d6d6] outline-none cursor-pointer"
-                    />
                   </div>
 
                   <form onSubmit={handleAddBazarItem} className="flex gap-2">
@@ -2254,9 +2248,9 @@ export default function App() {
                 <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-sf-bold text-base text-[#141414]">My Presence Status</h3>
-                      <p className="font-sf-regular text-[10px] text-[#626262]">
-                        Choose whether you are having meals today
+                      <h3 className="font-sf-bold text-base text-[#141414]">My status</h3>
+                      <p className="font-sf-regular text-[10px] text-[#626262] leading-tight">
+                        Choose whether you are<br />having meal today
                       </p>
                     </div>
                     <div className="flex items-center gap-[6px]">
@@ -2635,35 +2629,37 @@ export default function App() {
                 {/* Audit Trail Logs */}
                 {effectiveIsManager && (
                   <div className="rounded-[24px] bg-[#e5e6e1] p-[20px] border border-[#d6d6d6] space-y-3">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
                       <ClipboardList size={18} className="text-red-600" />
                       <h3 className="font-sf-bold text-base text-[#141414]">Audit Trail Logs</h3>
                     </div>
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {auditLogs.length > 0 ? (
-                        auditLogs.map((log) => (
+                    {auditLogs.length > 0 ? (
+                      <div className="bg-white rounded-[16px] border border-[#d6d6d6] divide-y divide-[#d6d6d6]/60 overflow-hidden max-h-[300px] overflow-y-auto">
+                        {auditLogs.map((log) => (
                           <div
                             key={log.id}
-                            className="flex items-center justify-between p-3 bg-white rounded-[12px] border border-[#d6d6d6]"
+                            className="flex items-center justify-between p-3 sm:px-4"
                           >
-                            <div>
-                              <p className="font-sf-semibold text-xs text-[#141414]">{log.action}</p>
+                            <div className="pr-2 min-w-0">
+                              <p className="font-sf-semibold text-xs text-[#141414] truncate">{log.action}</p>
                               <p className="font-sf-regular text-[9px] text-[#626262]">By {log.person}</p>
                             </div>
-                            <span className="font-sf-regular text-[9px] text-[#8e8e8e]">
+                            <span className="font-sf-regular text-[9px] text-[#8e8e8e] shrink-0">
                               {new Date(log.created_at).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
                             </span>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-center font-sf-regular text-xs text-[#8e8e8e] py-6">
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-[16px] border border-[#d6d6d6] p-6 text-center">
+                        <p className="font-sf-regular text-xs text-[#8e8e8e]">
                           No audit logs recorded.
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
